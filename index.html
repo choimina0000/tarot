@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mystic Tarot</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05050e;--bg2:#09091a;--panel:#0c0c22;--card-bg:#0f0f28;
+  --border:#1a1a40;--border2:#2a2a60;
+  --gold:#c9a84c;--gold2:#e8c870;--gold3:#6a5520;
+  --blue:#4a80d4;--blue2:#6ab4e8;--blue3:#1a3060;
+  --green:#48c270;--red:#c04060;
+  --text:#e4ddf8;--text2:#8880b8;--text3:#30305a;
+  --cw:88px;--ch:150px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden}
+#stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+.hidden{display:none!important}
+.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+
+/* CARD BOX */
+.card-box{background:var(--panel);border:1px solid var(--border2);border-radius:16px;padding:32px 28px;width:100%;max-width:420px}
+.cbt{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:3px;margin-bottom:6px;text-align:center}
+.cbs2{font-size:11px;color:var(--text2);letter-spacing:2px;text-align:center;margin-bottom:20px}
+.divider{width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--gold3),transparent);margin:0 auto 20px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:10px;color:var(--text2);letter-spacing:2px;margin-bottom:5px}
+.field input,.field textarea,.field select{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:10px 13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;transition:border-color .2s}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--gold3)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field select option{background:var(--bg2)}
+.field textarea{resize:none;height:78px;line-height:1.6}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
+.btn{border:none;border-radius:8px;padding:12px 22px;font-family:'Noto Sans KR',sans-serif;font-size:13px;letter-spacing:1px;cursor:pointer;transition:all .2s;width:100%;margin-top:6px}
+.btn-gold{background:linear-gradient(135deg,rgba(201,168,76,.22),rgba(100,80,30,.14));border:1px solid var(--gold3);color:var(--gold2)}
+.btn-gold:hover{background:linear-gradient(135deg,rgba(201,168,76,.35),rgba(100,80,30,.22))}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--border);color:var(--text)}
+.btn-red{background:rgba(200,64,96,.12);border:1px solid #401020;color:var(--red)}
+.btn-red:hover{background:rgba(200,64,96,.22)}
+.btn:disabled{opacity:.38;cursor:not-allowed}
+.btn-sm{padding:6px 15px;font-size:11px;border-radius:6px;margin-top:0;width:auto}
+.err-msg{font-size:11px;color:var(--red);margin-top:-6px;margin-bottom:8px;letter-spacing:.5px}
+
+/* ROLE SELECT */
+.logo-wrap{text-align:center;margin-bottom:28px}
+.logo-eye{font-family:'Cinzel',serif;font-size:11px;letter-spacing:8px;color:var(--gold2);opacity:.6;margin-bottom:6px}
+.logo-main{font-family:'Cinzel',serif;font-size:clamp(30px,8vw,54px);font-weight:700;letter-spacing:6px;
+  background:linear-gradient(160deg,var(--gold2),var(--gold),#a07838);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:13px;color:var(--text2);margin-top:10px;letter-spacing:1px;line-height:1.8}
+.role-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;width:100%;max-width:380px}
+.role-btn{flex:1;min-width:140px;padding:22px 16px;border-radius:12px;text-align:center;cursor:pointer;
+  transition:all .25s;border:1px solid var(--border2);background:var(--panel)}
+.role-btn:hover{border-color:var(--gold3);background:rgba(201,168,76,.06);transform:translateY(-2px)}
+.role-btn-icon{font-size:26px;margin-bottom:8px}
+.role-btn-label{font-family:'Cinzel',serif;font-size:12px;color:var(--gold);letter-spacing:2px}
+.role-btn-desc{font-size:10px;color:var(--text2);margin-top:3px;letter-spacing:.5px}
+
+/* PASSWORD MODAL */
+#pwOverlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.82);
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+
+/* LOBBY */
+.lobby-wrap{width:100%;max-width:800px;display:flex;flex-direction:column;gap:12px;min-height:0}
+.lobby-top{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.lobby-title{font-family:'Cinzel',serif;font-size:14px;color:var(--gold);letter-spacing:3px}
+.lobby-meta{font-size:11px;color:var(--text2);margin-top:3px}
+.lobby-settings{background:var(--panel);border:1px solid var(--border);border-radius:10px;
+  padding:13px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0}
+.lset-lbl{font-size:10px;color:var(--text2);letter-spacing:2px}
+.lset-select{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
+  padding:6px 11px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:12px}
+.lobby-list-label{font-size:9px;color:var(--text3);letter-spacing:3px;flex-shrink:0}
+.lobby-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:200px}
+.lobby-empty{text-align:center;color:var(--text3);font-size:13px;letter-spacing:1px;padding:40px 20px;line-height:2}
+.client-card{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:14px 16px;
+  display:flex;align-items:flex-start;gap:12px;transition:border-color .2s}
+.client-card:hover{border-color:var(--border2)}
+.c-avatar{width:38px;height:38px;border-radius:50%;background:var(--card-bg);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.c-info{flex:1;min-width:0}
+.c-name{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px}
+.c-meta{font-size:10px;color:var(--text2);margin-bottom:5px}
+.c-q{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:12px;color:var(--gold2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px;opacity:.85}
+.c-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.other-cons{background:var(--card-bg);border:1px solid var(--border);border-radius:8px;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
+.oc-lbl{font-size:9px;color:var(--text3);letter-spacing:3px}
+.oc-chip{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;
+  padding:3px 10px;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px}
+.oc-dot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+/* CLIENT WAITING */
+.wait-screen{display:flex;flex-direction:column;align-items:center;gap:0;width:100%;max-width:500px}
+.wait-icon{font-size:32px;opacity:.4;animation:wfl 3s ease-in-out infinite;margin-bottom:14px}
+@keyframes wfl{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.wait-title{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:3px;margin-bottom:6px;text-align:center}
+.wait-sub{font-size:11px;color:var(--text2);letter-spacing:1px;text-align:center;margin-bottom:20px}
+.wait-pos{background:var(--panel);border:1px solid var(--border2);border-radius:10px;
+  padding:10px 20px;font-size:12px;color:var(--text2);margin-bottom:24px;display:flex;align-items:center;gap:8px}
+.w-dot{width:7px;height:7px;border-radius:50%;background:var(--gold3);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.8)}}
+.wait-divider{width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);margin:0 auto 20px}
+.wait-card-area{text-align:center;margin-bottom:20px}
+.wait-card-img{width:100px;height:171px;border-radius:9px;overflow:hidden;
+  border:1px solid var(--border2);margin:0 auto 12px;box-shadow:0 8px 30px rgba(0,0,0,.5);
+  transition:opacity .5s}
+.wait-card-img img{width:100%;height:100%;object-fit:cover}
+.wait-card-name{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:2px;margin-bottom:8px}
+.wait-card-meaning{font-size:12px;color:var(--text2);line-height:1.7;max-width:360px;margin:0 auto}
+.wait-quote{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;
+  color:var(--text2);text-align:center;line-height:1.8;padding:16px 20px;
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  max-width:400px;margin-bottom:16px}
+
+/* SESSION */
+#scrSession{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;padding:0}
+.sess-hdr{height:50px;min-height:50px;background:rgba(5,5,14,.92);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px;
+  backdrop-filter:blur(12px);z-index:20;flex-shrink:0}
+.sess-logo{font-family:'Cinzel',serif;font-size:12px;color:var(--gold);letter-spacing:2px}
+.sess-info{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text2)}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.sdot.off{background:var(--text3);box-shadow:none}
+.sess-acts{display:flex;gap:6px;align-items:center}
+.hb{background:transparent;border:1px solid var(--border);border-radius:5px;padding:5px 10px;
+  color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;transition:all .15s;letter-spacing:.5px}
+.hb:hover{border-color:var(--border2);color:var(--text)}
+.hb.blue{border-color:var(--blue3);color:var(--blue2)}
+.hb.blue:hover{background:rgba(74,128,212,.1)}
+.hb.red{border-color:#401020;color:var(--red)}
+.sess-body{flex:1;display:flex;overflow:hidden;min-height:0}
+.main-area{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px;display:flex;flex-direction:column;gap:12px}
+.chat-col{width:285px;min-width:285px;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+
+/* PINNED Q */
+.pq-bar{background:rgba(201,168,76,.07);border-bottom:1px solid var(--gold3);padding:10px 13px;flex-shrink:0}
+.pq-lbl{font-size:8px;color:var(--gold3);letter-spacing:3px;margin-bottom:3px}
+.pq-txt{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--gold2);line-height:1.5}
+.pq-rnd{font-size:9px;color:var(--text3);margin-top:2px;letter-spacing:2px}
+
+/* CHAT */
+.chat-hdr{padding:11px 13px;border-bottom:1px solid var(--border);font-size:9px;letter-spacing:4px;color:var(--text3);flex-shrink:0}
+.chat-msgs{flex:1;overflow-y:auto;padding:9px;display:flex;flex-direction:column;gap:6px;
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.msg{padding:8px 11px;border-radius:7px;max-width:88%;font-size:12px;line-height:1.6;word-break:break-word}
+.msg-c{background:rgba(201,168,76,.1);border:1px solid var(--gold3);align-self:flex-end;color:var(--text)}
+.msg-k{background:rgba(78,205,196,.07);border:1px solid rgba(78,205,196,.2);align-self:flex-start;color:var(--text)}
+.msg-sys{background:transparent;font-size:10px;color:var(--text3);text-align:center;align-self:center;border:none!important;padding:4px 8px}
+.msg-name{font-size:8px;letter-spacing:2px;margin-bottom:2px;opacity:.7}
+.typing-ind{font-size:10px;color:var(--text3);letter-spacing:1px;padding:3px 9px;align-self:flex-start;flex-shrink:0}
+.chat-in-wrap{padding:9px;border-top:1px solid var(--border);display:flex;gap:6px;flex-shrink:0}
+.chat-in{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  padding:8px 10px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;resize:none;height:38px}
+.chat-in:focus{outline:none;border-color:var(--border2)}
+.send-btn{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
+  padding:7px 11px;color:var(--gold);cursor:pointer;transition:all .15s;font-size:15px;flex-shrink:0}
+.send-btn:hover{background:rgba(201,168,76,.1)}
+
+/* DECK */
+.deck-sec{display:flex;flex-direction:column;align-items:center;gap:14px;padding:14px 0}
+.deck-lbl{font-family:'Cinzel',serif;font-size:10px;color:var(--text2);letter-spacing:3px;text-align:center}
+.deck-stack{position:relative;width:var(--cw);height:var(--ch);filter:drop-shadow(0 8px 24px rgba(100,80,160,.4))}
+.deck-stack.ih:hover .dtop{transform:translateY(-6px) scale(1.03);filter:drop-shadow(0 0 16px rgba(201,168,76,.5))}
+.dshadow{position:absolute;width:var(--cw);height:var(--ch);border-radius:8px;background:var(--card-bg);border:1px solid var(--border2)}
+.dshadow:nth-child(1){transform:translateX(-3px) translateY(3px) rotate(-1.5deg)}
+.dshadow:nth-child(2){transform:translateX(3px) translateY(2px) rotate(1deg)}
+.dtop{position:absolute;inset:0;border-radius:8px;overflow:hidden;transition:all .3s;background:var(--card-bg);border:1px solid var(--border2)}
+.deck-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}
+.shuf-btn{background:transparent;border:1px solid var(--border2);border-radius:7px;padding:9px 26px;
+  color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:11px;letter-spacing:2px;cursor:pointer;transition:all .3s}
+.shuf-btn:hover{border-color:var(--gold3);color:var(--gold)}
+.shuf-btn:disabled{opacity:.38;cursor:not-allowed}
+.draw-count{font-size:10px;color:var(--text3);letter-spacing:1px}
+
+/* CARD BACK */
+.cbf{width:100%;height:100%;background:linear-gradient(160deg,#0c0c2a,#08082a);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.cbf::before{content:'';position:absolute;inset:5px;border:1px solid var(--gold3);border-radius:5px}
+.cbf::after{content:'';position:absolute;inset:8px;border:1px solid rgba(201,168,76,.2);border-radius:4px}
+.cbstar{position:relative;z-index:1;font-size:20px;opacity:.6;color:var(--gold);text-shadow:0 0 12px rgba(201,168,76,.5)}
+
+/* CARD FLIP */
+.cw{position:relative;width:var(--cw);height:var(--ch);perspective:800px;flex-shrink:0;cursor:pointer}
+.ci{width:100%;height:100%;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.4,0,.2,1)}
+.ci.flipped{transform:rotateY(180deg)}
+.cf,.cb{position:absolute;inset:0;border-radius:8px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--border2)}
+.cf{transform:rotateY(180deg)}
+.cf img{width:100%;height:100%;object-fit:cover;display:block}
+.cf-fb{width:100%;height:100%;background:linear-gradient(160deg,#14142e,#0a0a20);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:8px}
+.cf-fb .cn{font-family:'Cormorant Garamond',serif;font-size:11px;color:var(--gold);text-align:center;line-height:1.4}
+.cf-fb .ck{font-size:9px;color:var(--text2);text-align:center}
+.cf-fb .cs{font-size:18px;opacity:.5}
+.cb .cbf{border-radius:7px}
+.drawn-area{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;align-content:flex-start;min-height:60px}
+.dc-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+.dc-lbl{font-family:'Cormorant Garamond',serif;font-size:10px;color:var(--text2);text-align:center;max-width:var(--cw);line-height:1.3}
+.dc-comment-ind{font-size:9px;color:var(--gold3);letter-spacing:1px}
+
+/* SECTION LABELS */
+.sec-lbl{font-size:9px;color:var(--text3);letter-spacing:4px;border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:11px}
+.round-block{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:13px}
+.rb-title{font-size:8px;color:var(--text3);letter-spacing:3px;margin-bottom:5px}
+.rb-q{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--gold2);
+  padding:7px 10px;background:rgba(201,168,76,.05);border-left:2px solid var(--gold3);border-radius:0 4px 4px 0;margin-bottom:9px;line-height:1.5}
+.empty-msg{font-size:11px;color:var(--text3);letter-spacing:1px;padding:16px 0;text-align:center}
+
+/* Q INPUT */
+.q-sec{max-width:500px;width:100%;margin:0 auto;padding:8px 0}
+.q-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:3px;text-align:center;margin-bottom:5px}
+.q-desc{font-size:11px;color:var(--text2);text-align:center;line-height:1.8;margin-bottom:14px;letter-spacing:.3px}
+
+/* CARD REVEAL */
+.overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;animation:fdi .3s ease;padding:16px;overflow-y:auto}
+@keyframes fdi{from{opacity:0}to{opacity:1}}
+.rev-box{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:310px;width:100%;animation:rvu .35s ease}
+@keyframes rvu{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+.rev-img{width:140px;height:239px;border-radius:10px;overflow:hidden;border:1px solid var(--border2);box-shadow:0 0 40px rgba(201,168,76,.25)}
+.rev-img img{width:100%;height:100%;object-fit:cover;display:block}
+.rev-name{font-family:'Cinzel',serif;font-size:15px;color:var(--gold2);letter-spacing:2px;text-align:center}
+.rev-kr{font-size:11px;color:var(--text2);letter-spacing:1px}
+.rev-meaning-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;width:100%}
+.rev-box-lbl{font-size:8px;color:var(--text3);letter-spacing:3px;margin-bottom:4px}
+.rev-box-txt{font-size:12px;color:var(--text2);line-height:1.7}
+.rev-comment-box{background:rgba(201,168,76,.07);border:1px solid var(--gold3);border-radius:8px;padding:11px 13px;width:100%}
+.rev-comment-lbl{font-size:8px;color:var(--gold3);letter-spacing:3px;margin-bottom:4px}
+.rev-comment-txt{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:13px;color:var(--gold2);line-height:1.7}
+.rev-close{font-size:11px;color:var(--text3);cursor:pointer;letter-spacing:2px;margin-top:2px}
+.rev-close:hover{color:var(--text2)}
+
+/* COMMENT EDITOR */
+.comment-editor{margin-top:4px;width:100%;max-width:var(--cw);position:relative}
+.comment-ta{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:5px;
+  padding:7px 9px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:11px;resize:none;height:54px;line-height:1.5}
+.comment-ta:focus{outline:none;border-color:var(--gold3)}
+.comment-save{background:rgba(201,168,76,.1);border:1px solid var(--gold3);border-radius:4px;
+  padding:4px 10px;color:var(--gold);font-family:'Noto Sans KR',sans-serif;font-size:10px;
+  cursor:pointer;margin-top:4px;transition:all .15s;letter-spacing:1px;display:block}
+.comment-save:hover{background:rgba(201,168,76,.2)}
+
+/* SHUFFLE CARD */
+.shuf-card{position:fixed;border-radius:8px;overflow:hidden;width:var(--cw);height:var(--ch);pointer-events:none;z-index:200;background:var(--card-bg);border:1px solid var(--border2)}
+
+/* MOBILE TABS */
+.mob-tabs{display:none;position:fixed;bottom:0;left:0;right:0;z-index:30;
+  background:rgba(8,9,26,.96);border-top:1px solid var(--border);backdrop-filter:blur(12px)}
+.mob-tabs-inner{display:flex}
+.mob-tab{flex:1;padding:11px 8px;text-align:center;cursor:pointer;transition:all .15s;font-size:11px;color:var(--text2);letter-spacing:1px;position:relative}
+.mob-tab.active{color:var(--gold)}
+.mob-badge{position:absolute;top:8px;right:calc(50% - 18px);background:var(--red);color:#fff;
+  border-radius:10px;font-size:9px;padding:1px 5px;min-width:16px;text-align:center}
+
+/* NOTIF */
+.notif{position:fixed;bottom:68px;left:50%;transform:translateX(-50%);
+  background:var(--panel);border:1px solid var(--border2);border-radius:8px;
+  padding:9px 16px;font-size:12px;color:var(--text);letter-spacing:.5px;
+  z-index:500;animation:nIn .3s ease;box-shadow:0 8px 30px rgba(0,0,0,.5);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+@keyframes nIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* EXPIRED SCREEN */
+.expired-box{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.expired-icon{font-size:40px;opacity:.3}
+.expired-title{font-family:'Cinzel',serif;font-size:18px;color:var(--text2);letter-spacing:3px}
+.expired-desc{font-size:12px;color:var(--text3);letter-spacing:1px;line-height:1.8}
+
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+@media(max-width:660px){
+  .chat-col{display:none!important}
+  .mob-tabs{display:block}
+  .sess-body{padding-bottom:50px}
+  .notif{bottom:62px}
+  .c-q{max-width:180px}
+}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+
+<!-- ① ROLE SELECT -->
+<div id="scrRole" class="screen">
+  <div class="logo-wrap">
+    <div class="logo-eye">M Y S T I C</div>
+    <div class="logo-main">TAROT</div>
+    <div class="logo-sub">실시간 타로 상담 플랫폼</div>
+  </div>
+  <div class="role-btns">
+    <div class="role-btn" id="roleConsultant">
+      <div class="role-btn-icon">✦</div>
+      <div class="role-btn-label">상담사</div>
+      <div class="role-btn-desc">내담자 관리 · 카드 해석</div>
+    </div>
+    <div class="role-btn" id="roleClient">
+      <div class="role-btn-icon">⟡</div>
+      <div class="role-btn-label">내담자</div>
+      <div class="role-btn-desc">상담 신청 · 카드 뽑기</div>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD OVERLAY -->
+<div id="pwOverlay" class="hidden">
+  <div class="card-box" style="max-width:340px">
+    <div class="cbt">상담사 인증</div>
+    <div class="cbs2">AUTHENTICATION</div>
+    <div class="divider"></div>
+    <div class="field">
+      <label>비밀번호</label>
+      <input id="pwInput" type="password" placeholder="비밀번호를 입력하세요" autocomplete="off" maxlength="20">
+    </div>
+    <div id="pwErr" class="err-msg hidden">비밀번호가 올바르지 않아요</div>
+    <button class="btn btn-gold" id="pwBtn">확인</button>
+    <button class="btn btn-ghost" style="margin-top:8px" id="pwCancel">취소</button>
+  </div>
+</div>
+
+<!-- ② CONSULTANT SETUP -->
+<div id="scrCSetup" class="screen hidden">
+  <div class="card-box">
+    <div class="cbt">상담사 입장</div>
+    <div class="cbs2">CONSULTANT</div>
+    <div class="divider"></div>
+    <div class="field"><label>닉네임</label><input id="cNick" type="text" placeholder="상담사 이름 또는 별명" maxlength="12"></div>
+    <button class="btn btn-gold" id="cEnterBtn">대기실 입장 →</button>
+    <button class="btn btn-ghost" style="margin-top:8px" id="cBackBtn">← 뒤로</button>
+  </div>
+</div>
+
+<!-- ③ CLIENT SETUP -->
+<div id="scrKSetup" class="screen hidden">
+  <div class="card-box">
+    <div class="cbt">상담 신청</div>
+    <div class="cbs2">NEW READING</div>
+    <div class="divider"></div>
+    <div class="field-row">
+      <div class="field" style="flex:1.4"><label>닉네임</label><input id="kNick" type="text" placeholder="이름 또는 별명" maxlength="12"></div>
+      <div class="field" style="flex:.7"><label>나이</label><input id="kAge" type="number" placeholder="25" min="1" max="99"></div>
+      <div class="field" style="flex:.9">
+        <label>성별</label>
+        <select id="kGender"><option value="">선택</option><option value="여성">여성</option><option value="남성">남성</option><option value="기타">기타</option></select>
+      </div>
+    </div>
+    <div class="field"><label>오늘의 질문</label><textarea id="kQ" placeholder="마음속에 담아두었던 질문을 자유롭게 적어주세요..."></textarea></div>
+    <button class="btn btn-gold" id="kEnterBtn">상담 대기 →</button>
+    <button class="btn btn-ghost" style="margin-top:8px" id="kBackBtn">← 뒤로</button>
+  </div>
+</div>
+
+<!-- ④ LOBBY -->
+<div id="scrLobby" class="screen hidden" style="justify-content:flex-start;padding-top:20px;padding-bottom:20px">
+  <div class="lobby-wrap">
+    <div class="lobby-top">
+      <div>
+        <div class="lobby-title">대기실</div>
+        <div class="lobby-meta">상담사: <span id="lobbyMyNick">-</span></div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="lobbyOut">나가기</button>
+    </div>
+    <div class="other-cons hidden" id="otherCons">
+      <div class="oc-lbl">접속 중인 상담사</div>
+      <div id="ocChips"></div>
+    </div>
+    <div class="lobby-settings">
+      <div class="lset-lbl">카드 뽑기 제한</div>
+      <select class="lset-select" id="maxCardsSel">
+        <option value="1">1장</option>
+        <option value="3" selected>3장</option>
+        <option value="5">5장</option>
+        <option value="10">10장</option>
+        <option value="78">제한 없음</option>
+      </select>
+      <span style="font-size:10px;color:var(--text3)">내담자당 최대 뽑기 수</span>
+    </div>
+    <div class="lobby-list-label">대기 중인 내담자</div>
+    <div class="lobby-list" id="lobbyList">
+      <div class="lobby-empty" id="lobbyEmpty">대기 중인 내담자가 없어요<br><span style="font-size:10px;opacity:.5">내담자가 신청하면 여기에 나타나요</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑤ CLIENT WAITING -->
+<div id="scrKWait" class="screen hidden">
+  <div class="wait-screen">
+    <div class="wait-icon">✦</div>
+    <div class="wait-title">상담사를 기다리고 있어요</div>
+    <div class="wait-sub">잠시 후 상담이 시작됩니다</div>
+    <div class="wait-pos"><div class="w-dot"></div><span id="waitPosText">대기 중...</span></div>
+    <div class="wait-divider"></div>
+    <div class="wait-card-area" id="waitCardArea">
+      <div class="wait-card-img" id="waitCardImg"><img id="waitCardImgEl" src="" alt=""></div>
+      <div class="wait-card-name" id="waitCardName"></div>
+      <div class="wait-card-meaning" id="waitCardMeaning"></div>
+    </div>
+    <div class="wait-quote" id="waitQuote"></div>
+    <button class="btn btn-ghost btn-sm" id="waitCancelBtn" style="margin-top:4px">대기 취소</button>
+  </div>
+</div>
+
+<!-- ⑥ SESSION -->
+<div id="scrSession" class="hidden">
+  <div class="sess-hdr">
+    <div class="sess-logo">✦ MYSTIC TAROT</div>
+    <div class="sess-info"><div class="sdot off" id="sDot"></div><span id="sInfo">-</span></div>
+    <div class="sess-acts">
+      <button class="hb blue hidden" id="sAddQ">+ 추가 질문</button>
+      <button class="hb" id="sSave">저장</button>
+      <button class="hb red" id="sEnd">종료</button>
+    </div>
+  </div>
+  <div class="sess-body">
+    <div class="main-area" id="mainArea"></div>
+    <div class="chat-col" id="chatCol">
+      <div class="chat-hdr">CHAT · 채팅</div>
+      <div class="pq-bar hidden" id="pqBar">
+        <div class="pq-lbl">CURRENT QUESTION</div>
+        <div class="pq-txt" id="pqTxt"></div>
+        <div class="pq-rnd" id="pqRnd"></div>
+      </div>
+      <div class="chat-msgs" id="chatMsgs"></div>
+      <div class="typing-ind hidden" id="typingInd">입력 중...</div>
+      <div class="chat-in-wrap">
+        <textarea class="chat-in" id="chatIn" placeholder="메시지..."></textarea>
+        <button class="send-btn" id="sendBtn">➤</button>
+      </div>
+    </div>
+  </div>
+  <div class="mob-tabs">
+    <div class="mob-tabs-inner">
+      <div class="mob-tab active" id="tabCard" onclick="switchTab('card')">🃏 카드</div>
+      <div class="mob-tab" id="tabChat" onclick="switchTab('chat')">💬 채팅<span class="mob-badge hidden" id="chatBadge">0</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑦ EXPIRED -->
+<div id="scrExpired" class="screen hidden">
+  <div class="expired-box">
+    <div class="expired-icon">✦</div>
+    <div class="expired-title">종료된 상담</div>
+    <div class="expired-desc">이 세션은 이미 종료됐어요.<br>새로운 상담을 시작해주세요.</div>
+    <button class="btn btn-ghost" style="max-width:200px;margin-top:10px" onclick="location.href=location.pathname">처음으로</button>
+  </div>
+</div>
+
+<!-- FIREBASE CONFIG -->
+<script>
+const firebaseConfig = {
+  apiKey:            "AIzaSyDKftu4vnnx85qrh4TYQtmleeoRgB20YIo",
+  authDomain:        "tarotconsole.firebaseapp.com",
+  databaseURL:       "https://tarotconsole-default-rtdb.firebaseio.com",
+  projectId:         "tarotconsole",
+  storageBucket:     "tarotconsole.firebasestorage.app",
+  messagingSenderId: "929137421950",
+  appId:             "1:929137421950:web:6e5d01917760d0f875b22f"
+};
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script>
+/* ═══════════════════════════════
+   PASSWORD (obfuscated)
+═══════════════════════════════ */
+// Do not modify — verification key
+const _K = 'eGtqTjBJVFk=';
+function _ck(s){try{return s.length===6&&btoa([...btoa(s)].reverse().join(''))===_K;}catch(e){return false;}}
+
+/* ═══════════════════════════════
+   DECK + IMAGES
+═══════════════════════════════ */
+const IMG = 'https://www.sacred-texts.com/tarot/pkt/img/';
+const SICON = {major:'✦',wands:'🔥',cups:'💧',swords:'⚔',pentacles:'⭐'};
+
+// FIXED: correct URL for all cards including aces
+function cardImg(card) {
+  if (card.suit === 'major') return IMG + card.id + '.jpg';
+  const S = {wands:'wands',cups:'cups',swords:'swords',pentacles:'pents'}[card.suit];
+  const sfx = card.id.slice(-2);
+  return IMG + S + (sfx === '01' ? 'ac' : sfx) + '.jpg';
+}
+
+const DECK=[
+  {id:'ar00',name:'The Fool',kr:'바보',suit:'major'},
+  {id:'ar01',name:'The Magician',kr:'마법사',suit:'major'},
+  {id:'ar02',name:'The High Priestess',kr:'여사제',suit:'major'},
+  {id:'ar03',name:'The Empress',kr:'여황제',suit:'major'},
+  {id:'ar04',name:'The Emperor',kr:'황제',suit:'major'},
+  {id:'ar05',name:'The Hierophant',kr:'교황',suit:'major'},
+  {id:'ar06',name:'The Lovers',kr:'연인',suit:'major'},
+  {id:'ar07',name:'The Chariot',kr:'전차',suit:'major'},
+  {id:'ar08',name:'Strength',kr:'힘',suit:'major'},
+  {id:'ar09',name:'The Hermit',kr:'은둔자',suit:'major'},
+  {id:'ar10',name:'Wheel of Fortune',kr:'운명의 수레바퀴',suit:'major'},
+  {id:'ar11',name:'Justice',kr:'정의',suit:'major'},
+  {id:'ar12',name:'The Hanged Man',kr:'매달린 사람',suit:'major'},
+  {id:'ar13',name:'Death',kr:'죽음',suit:'major'},
+  {id:'ar14',name:'Temperance',kr:'절제',suit:'major'},
+  {id:'ar15',name:'The Devil',kr:'악마',suit:'major'},
+  {id:'ar16',name:'The Tower',kr:'탑',suit:'major'},
+  {id:'ar17',name:'The Star',kr:'별',suit:'major'},
+  {id:'ar18',name:'The Moon',kr:'달',suit:'major'},
+  {id:'ar19',name:'The Sun',kr:'태양',suit:'major'},
+  {id:'ar20',name:'Judgement',kr:'심판',suit:'major'},
+  {id:'ar21',name:'The World',kr:'세계',suit:'major'},
+  {id:'wa01',name:'Ace of Wands',kr:'완드 에이스',suit:'wands'},
+  {id:'wa02',name:'Two of Wands',kr:'완드 2',suit:'wands'},
+  {id:'wa03',name:'Three of Wands',kr:'완드 3',suit:'wands'},
+  {id:'wa04',name:'Four of Wands',kr:'완드 4',suit:'wands'},
+  {id:'wa05',name:'Five of Wands',kr:'완드 5',suit:'wands'},
+  {id:'wa06',name:'Six of Wands',kr:'완드 6',suit:'wands'},
+  {id:'wa07',name:'Seven of Wands',kr:'완드 7',suit:'wands'},
+  {id:'wa08',name:'Eight of Wands',kr:'완드 8',suit:'wands'},
+  {id:'wa09',name:'Nine of Wands',kr:'완드 9',suit:'wands'},
+  {id:'wa10',name:'Ten of Wands',kr:'완드 10',suit:'wands'},
+  {id:'wapa',name:'Page of Wands',kr:'완드 시종',suit:'wands'},
+  {id:'wakn',name:'Knight of Wands',kr:'완드 기사',suit:'wands'},
+  {id:'waqu',name:'Queen of Wands',kr:'완드 여왕',suit:'wands'},
+  {id:'waki',name:'King of Wands',kr:'완드 왕',suit:'wands'},
+  {id:'cu01',name:'Ace of Cups',kr:'컵 에이스',suit:'cups'},
+  {id:'cu02',name:'Two of Cups',kr:'컵 2',suit:'cups'},
+  {id:'cu03',name:'Three of Cups',kr:'컵 3',suit:'cups'},
+  {id:'cu04',name:'Four of Cups',kr:'컵 4',suit:'cups'},
+  {id:'cu05',name:'Five of Cups',kr:'컵 5',suit:'cups'},
+  {id:'cu06',name:'Six of Cups',kr:'컵 6',suit:'cups'},
+  {id:'cu07',name:'Seven of Cups',kr:'컵 7',suit:'cups'},
+  {id:'cu08',name:'Eight of Cups',kr:'컵 8',suit:'cups'},
+  {id:'cu09',name:'Nine of Cups',kr:'컵 9',suit:'cups'},
+  {id:'cu10',name:'Ten of Cups',kr:'컵 10',suit:'cups'},
+  {id:'cupa',name:'Page of Cups',kr:'컵 시종',suit:'cups'},
+  {id:'cukn',name:'Knight of Cups',kr:'컵 기사',suit:'cups'},
+  {id:'cuqu',name:'Queen of Cups',kr:'컵 여왕',suit:'cups'},
+  {id:'cuki',name:'King of Cups',kr:'컵 왕',suit:'cups'},
+  {id:'sw01',name:'Ace of Swords',kr:'소드 에이스',suit:'swords'},
+  {id:'sw02',name:'Two of Swords',kr:'소드 2',suit:'swords'},
+  {id:'sw03',name:'Three of Swords',kr:'소드 3',suit:'swords'},
+  {id:'sw04',name:'Four of Swords',kr:'소드 4',suit:'swords'},
+  {id:'sw05',name:'Five of Swords',kr:'소드 5',suit:'swords'},
+  {id:'sw06',name:'Six of Swords',kr:'소드 6',suit:'swords'},
+  {id:'sw07',name:'Seven of Swords',kr:'소드 7',suit:'swords'},
+  {id:'sw08',name:'Eight of Swords',kr:'소드 8',suit:'swords'},
+  {id:'sw09',name:'Nine of Swords',kr:'소드 9',suit:'swords'},
+  {id:'sw10',name:'Ten of Swords',kr:'소드 10',suit:'swords'},
+  {id:'swpa',name:'Page of Swords',kr:'소드 시종',suit:'swords'},
+  {id:'swkn',name:'Knight of Swords',kr:'소드 기사',suit:'swords'},
+  {id:'swqu',name:'Queen of Swords',kr:'소드 여왕',suit:'swords'},
+  {id:'swki',name:'King of Swords',kr:'소드 왕',suit:'swords'},
+  {id:'pe01',name:'Ace of Pentacles',kr:'펜타클 에이스',suit:'pentacles'},
+  {id:'pe02',name:'Two of Pentacles',kr:'펜타클 2',suit:'pentacles'},
+  {id:'pe03',name:'Three of Pentacles',kr:'펜타클 3',suit:'pentacles'},
+  {id:'pe04',name:'Four of Pentacles',kr:'펜타클 4',suit:'pentacles'},
+  {id:'pe05',name:'Five of Pentacles',kr:'펜타클 5',suit:'pentacles'},
+  {id:'pe06',name:'Six of Pentacles',kr:'펜타클 6',suit:'pentacles'},
+  {id:'pe07',name:'Seven of Pentacles',kr:'펜타클 7',suit:'pentacles'},
+  {id:'pe08',name:'Eight of Pentacles',kr:'펜타클 8',suit:'pentacles'},
+  {id:'pe09',name:'Nine of Pentacles',kr:'펜타클 9',suit:'pentacles'},
+  {id:'pe10',name:'Ten of Pentacles',kr:'펜타클 10',suit:'pentacles'},
+  {id:'pepa',name:'Page of Pentacles',kr:'펜타클 시종',suit:'pentacles'},
+  {id:'pekn',name:'Knight of Pentacles',kr:'펜타클 기사',suit:'pentacles'},
+  {id:'pequ',name:'Queen of Pentacles',kr:'펜타클 여왕',suit:'pentacles'},
+  {id:'peki',name:'King of Pentacles',kr:'펜타클 왕',suit:'pentacles'},
+];
+
+const MEANINGS={
+  ar00:'새로운 시작과 순수한 도전. 예측 불가능한 여정의 첫 걸음을 의미해요.',
+  ar01:'강한 의지와 창조적 능력. 자신의 자원을 잘 활용하면 원하는 것을 이룰 수 있어요.',
+  ar02:'깊은 직관과 내면의 지혜. 아직 드러나지 않은 것들을 느끼고 기다리는 시간이에요.',
+  ar03:'풍요와 모성적 에너지. 창의력이 꽃피고 풍성한 결실을 맺을 수 있어요.',
+  ar04:'안정된 권위와 리더십. 체계와 질서를 통해 목표를 달성하는 시기예요.',
+  ar05:'전통과 정신적 가르침. 신뢰할 만한 조언자나 지침이 필요한 순간이에요.',
+  ar06:'사랑과 소중한 선택. 마음이 이끄는 방향에 따라 중요한 결정을 내려야 해요.',
+  ar07:'강한 의지로 앞을 향해 전진. 장애물을 극복하고 승리를 향해 나아가는 카드예요.',
+  ar08:'내면의 강함과 용기. 두려움을 부드럽게 다스리며 어려움을 이겨낼 수 있어요.',
+  ar09:'혼자만의 성찰과 내면 탐구. 잠시 멈추고 자신의 내면을 들여다볼 때예요.',
+  ar10:'운명의 전환점. 변화의 바람이 불어오고 새로운 국면이 시작되고 있어요.',
+  ar11:'균형과 공정한 결과. 행동에 따른 결실을 얻게 되는 시기예요.',
+  ar12:'다른 시각으로 바라보기. 잠시 기다리고 희생하면 더 깊은 통찰을 얻을 수 있어요.',
+  ar13:'변화와 전환. 끝은 곧 새로운 시작이에요. 두려워하지 않아도 괜찮아요.',
+  ar14:'균형과 조화, 인내. 서두르지 않고 천천히 나아가면 좋은 결과가 찾아와요.',
+  ar15:'집착이나 유혹에 주의. 스스로를 옭아매는 생각이나 관계를 점검해보세요.',
+  ar16:'갑작스러운 변화나 충격. 흔들리더라도 결국엔 더 튼튼한 기반을 얻게 돼요.',
+  ar17:'희망과 치유, 영감. 어두운 시간 이후에 반드시 빛이 찾아오는 카드예요.',
+  ar18:'무의식과 환상, 불확실함. 보이는 것이 전부가 아니니 직관을 믿어야 해요.',
+  ar19:'기쁨과 활력, 성공. 밝고 긍정적인 에너지로 모든 일이 잘 풀려나가는 시기예요.',
+  ar20:'새로운 깨달음과 부활. 과거를 놓아주고 더 나은 자신으로 거듭날 때예요.',
+  ar21:'완성과 성취, 통합. 긴 여정의 끝에서 원하는 것을 이루게 되는 카드예요.',
+  wa01:'새로운 아이디어와 창의적 시작. 열정적인 에너지가 불꽃처럼 피어오르고 있어요.',
+  wa02:'미래를 향한 비전과 계획. 더 넓은 세계로 나아갈 준비를 하고 있는 시기예요.',
+  wa03:'노력의 결실이 보이기 시작. 기회를 포착하고 앞으로 나아갈 때예요.',
+  wa04:'안정과 축하, 성취의 기쁨. 편안하고 행복한 시간이 찾아오고 있어요.',
+  wa05:'경쟁과 갈등, 에너지의 분산. 서로 다른 의견이 부딪히는 시기예요.',
+  wa06:'승리와 인정. 노력이 빛을 발하고 주변에서 인정받는 시기가 왔어요.',
+  wa07:'끈기 있게 자신의 입장을 지키기. 도전에 굴하지 않는 용기가 필요해요.',
+  wa08:'빠른 진행과 소식. 상황이 빠르게 움직이고 있으며 결과가 곧 나타나요.',
+  wa09:'회복력과 경계. 힘든 여정 끝에 마지막 한 고비를 넘어야 하는 시기예요.',
+  wa10:'과도한 책임감과 부담. 혼자 짊어진 짐이 너무 무겁지 않은지 돌아보세요.',
+  wapa:'새로운 열정과 탐구심. 에너지 넘치는 시작과 소식이 찾아올 수 있어요.',
+  wakn:'충동적인 행동과 모험심. 빠르게 움직이되 신중함도 잊지 마세요.',
+  waqu:'따뜻한 카리스마와 자신감. 주변 사람들을 이끄는 영감을 지닌 사람이에요.',
+  waki:'강한 비전과 결단력 있는 리더십. 원하는 방향으로 나아갈 힘이 있어요.',
+  cu01:'새로운 감정의 시작. 사랑이나 직관이 샘솟듯 넘쳐나는 시기예요.',
+  cu02:'두 사람 사이의 연결과 조화. 상호 이해와 유대가 깊어지고 있어요.',
+  cu03:'우정과 축하, 풍요로운 감정. 기쁨을 함께 나눌 사람들이 곁에 있어요.',
+  cu04:'내면을 들여다보는 시간. 눈앞의 기회를 놓치지 않도록 주의하세요.',
+  cu05:'상실감과 슬픔. 아직 남아있는 것에 시선을 돌리면 회복할 수 있어요.',
+  cu06:'따뜻한 추억과 향수. 순수했던 과거의 감정이 현재에 영향을 미치고 있어요.',
+  cu07:'꿈과 환상, 선택의 혼란. 너무 많은 가능성 중에서 진짜를 가려내야 해요.',
+  cu08:'더 깊은 의미를 찾아 떠남. 현재 상황을 뒤로하고 새로운 길을 탐색해요.',
+  cu09:'소원 성취와 만족감. 원하던 것이 이루어지고 감사함을 느끼는 시기예요.',
+  cu10:'가족과 관계의 완전한 행복. 사랑으로 가득 찬 충만한 삶을 나타내요.',
+  cupa:'섬세한 감수성과 창의력. 감정에 솔직하고 예술적인 영감이 넘쳐요.',
+  cukn:'낭만적이고 따뜻한 마음. 감정을 아름답게 표현하고 전달하는 사람이에요.',
+  cuqu:'깊은 공감 능력과 직관. 타인의 마음을 헤아리며 돌봐주는 존재예요.',
+  cuki:'감정적 성숙함과 지혜. 흔들리지 않는 내면의 평정심을 지닌 사람이에요.',
+  sw01:'명확함과 진실. 혼란을 뚫고 나아가는 결단력과 새로운 통찰이 생겨요.',
+  sw02:'결정을 미루고 있는 상황. 눈을 가리고 균형만 잡으려 하면 앞이 보이지 않아요.',
+  sw03:'마음의 상처와 이별의 슬픔. 아픔을 인정하고 치유의 시간을 가져야 해요.',
+  sw04:'휴식과 내면의 회복. 잠시 멈추고 에너지를 재충전할 때예요.',
+  sw05:'갈등과 자존심 충돌. 승리보다 관계를 먼저 생각해보는 것이 중요할 수 있어요.',
+  sw06:'어려운 상황에서 벗어나 나아감. 더 나은 곳을 향한 이행의 시기예요.',
+  sw07:'전략적 행동과 독자적 선택. 때로는 혼자 움직이는 것이 더 효과적일 수 있어요.',
+  sw08:'스스로 만든 제한에 갇혀있는 상황. 마음속 두려움에서 벗어나야 해요.',
+  sw09:'깊은 불안과 걱정. 밤이 가장 어두운 때가 새벽 직전이에요.',
+  sw10:'고통스러운 끝. 더 이상 나빠질 것이 없다는 신호이기도 해요.',
+  swpa:'예리한 지성과 진실 추구. 날카로운 관찰력으로 상황을 분석하는 능력이 있어요.',
+  swkn:'빠른 판단과 직진하는 결단력. 목표를 향해 거침없이 나아가는 에너지예요.',
+  swqu:'독립적이고 명확한 사고방식. 솔직하고 현명하게 자신의 길을 걸어가는 사람이에요.',
+  swki:'지적 권위와 공정한 판단력. 냉철하게 상황을 분석하고 결정을 내리는 사람이에요.',
+  pe01:'새로운 물질적 기회의 시작. 현실적인 가능성이 눈앞에 펼쳐지고 있어요.',
+  pe02:'여러 일을 동시에 저울질하는 상황. 유연하게 균형을 유지하는 것이 중요해요.',
+  pe03:'협력과 기술의 성장. 함께 노력할 때 더 큰 결과를 만들어낼 수 있어요.',
+  pe04:'안전을 추구하며 꽉 쥐고 있는 것. 필요 이상으로 방어적이거나 인색해질 수 있어요.',
+  pe05:'물질적, 감정적 결핍감. 어려운 시기이지만 도움은 생각보다 가까이 있어요.',
+  pe06:'나눔과 균형 잡힌 교환. 주고받는 관계에서 공정함이 중요한 시기예요.',
+  pe07:'장기적인 관점으로 기다리기. 인내하며 노력한 것들이 조금씩 자라나고 있어요.',
+  pe08:'기술을 연마하는 헌신. 꾸준한 노력이 쌓여 전문성으로 이어지는 시기예요.',
+  pe09:'자립적인 풍요와 성취. 스스로 이루어낸 것들에서 깊은 만족감을 느낄 수 있어요.',
+  pe10:'물질적 안정과 가족의 행복. 오랜 노력 끝에 얻은 풍요로운 삶을 나타내요.',
+  pepa:'신중한 계획과 실용적 학습. 차근차근 기반을 다지며 성장하는 시기예요.',
+  pekn:'꾸준하고 신뢰할 수 있는 행동. 성실함으로 천천히 하지만 확실히 나아가요.',
+  pequ:'실용적인 돌봄과 번영. 현실적이면서도 따뜻한 지혜로 주변을 이끌어요.',
+  peki:'물질적 성공과 안정적인 리더십. 현실적 판단력으로 풍요를 이끌어내는 사람이에요.',
+};
+
+const QUOTES=[
+  '타로는 답을 주는 것이 아니라, 질문을 더 명확하게 해줍니다.',
+  '카드는 당신이 이미 알고 있는 것을 보여줄 뿐입니다.',
+  '지금 이 순간의 선택이 운명을 만들어 갑니다.',
+  '타로는 거울입니다. 그 안에서 당신 자신을 마주하세요.',
+  '내면의 목소리에 귀 기울일 때, 카드는 가장 명확하게 말합니다.',
+  '모든 카드에는 빛과 그림자가 공존합니다. 우리의 삶처럼.',
+  '두려움 없이 카드를 바라볼 수 있을 때, 진정한 답이 찾아옵니다.',
+  '모든 끝은 새로운 시작의 씨앗을 품고 있습니다.',
+  '지금 당신 앞에 놓인 카드는 우연이 아닙니다.',
+  '타로는 미래를 예언하지 않습니다. 지금 이 순간 가장 필요한 것을 보여줄 뿐이에요.',
+];
+
+/* ── STARS ── */
+(()=>{
+  const cv=document.getElementById('stars'),ctx=cv.getContext('2d');let s=[];
+  const rs=()=>{cv.width=innerWidth;cv.height=innerHeight;s=[];
+    for(let i=0;i<Math.floor(cv.width*cv.height/8000);i++)
+      s.push({x:Math.random()*cv.width,y:Math.random()*cv.height,r:Math.random()*1.2+.2,o:Math.random()*.8+.1,sp:Math.random()*2+1});};
+  const dr=()=>{ctx.clearRect(0,0,cv.width,cv.height);
+    s.forEach(st=>{const p=.5+.5*Math.sin(Date.now()/1000/st.sp+st.x);
+      ctx.beginPath();ctx.arc(st.x,st.y,st.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(200,190,255,${st.o*p})`;ctx.fill();});requestAnimationFrame(dr);};
+  window.addEventListener('resize',rs);rs();dr();
+})();
+
+/* ═══════════════════════════════
+   STATE
+═══════════════════════════════ */
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const rnd=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=~~(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;};
+
+let db;
+const myKey=(()=>{let k=sessionStorage.getItem('t_uid');if(!k){k='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);sessionStorage.setItem('t_uid',k);}return k;})();
+let myRole='',myNick='',roomId='',currentRound=0,localDeck=[],drawnCount=0,maxCards=3,prevShufTs=0;
+let typingTimer=null,unreadChat=0,activeTab='card';
+
+// KEY FIX: track already-flipped cards to prevent re-animation on re-render
+const _flipped=new Set();
+
+const P='tr4_';
+const $=id=>document.getElementById(id);
+const show=id=>$(id).classList.remove('hidden');
+const hide=id=>$(id).classList.add('hidden');
+function notify(msg,dur=2600){
+  const el=document.createElement('div');el.className='notif';el.textContent=msg;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),dur);}
+
+/* ═══════════════════════════════
+   INIT
+═══════════════════════════════ */
+function init(){
+  try{firebase.initializeApp(firebaseConfig);db=firebase.database();}
+  catch(e){alert('Firebase 오류: '+e.message);return;}
+
+  // ROLE BUTTONS
+  $('roleConsultant').onclick=()=>show('pwOverlay');
+  $('roleClient').onclick=()=>{hide('scrRole');show('scrKSetup');setTimeout(()=>$('kNick').focus(),80);};
+
+  // PASSWORD
+  $('pwBtn').onclick=checkPw;
+  $('pwInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPw();});
+  $('pwCancel').onclick=()=>{hide('pwOverlay');$('pwInput').value='';hide('pwErr');};
+
+  // CONSULTANT SETUP
+  $('cBackBtn').onclick=()=>{hide('scrCSetup');show('scrRole');};
+  $('cEnterBtn').onclick=enterLobby;
+  $('cNick').addEventListener('keydown',e=>{if(e.key==='Enter')enterLobby();});
+
+  // CLIENT SETUP
+  $('kBackBtn').onclick=()=>{hide('scrKSetup');show('scrRole');};
+  $('kEnterBtn').onclick=enterWaiting;
+}
+
+function checkPw(){
+  const v=$('pwInput').value;
+  if(_ck(v)){
+    hide('pwOverlay');hide('pwErr');
+    $('pwInput').value='';
+    hide('scrRole');show('scrCSetup');
+    setTimeout(()=>$('cNick').focus(),80);
+  } else {
+    show('pwErr');
+    $('pwInput').value='';
+    $('pwInput').focus();
+    // Lock for 1 second after wrong attempt
+    $('pwBtn').disabled=true;
+    setTimeout(()=>$('pwBtn').disabled=false,1000);
+  }
+}
+
+/* ═══════════════════════════════
+   CONSULTANT LOBBY
+═══════════════════════════════ */
+function enterLobby(){
+  const nick=$('cNick').value.trim();
+  if(!nick){notify('닉네임을 입력해주세요');return;}
+  myNick=nick;myRole='consultant';
+  hide('scrCSetup');show('scrLobby');
+  $('lobbyMyNick').textContent=nick;
+
+  const ref=db.ref(`${P}lobby/consultants/${myKey}`);
+  ref.set({nick,at:Date.now()});
+  ref.onDisconnect().remove();
+
+  db.ref(`${P}lobby/waiting`).on('value',snap=>{
+    const data=snap.val()||{};
+    const waiting=Object.keys(data).filter(k=>data[k].status==='waiting');
+    $('lobbyEmpty').style.display=waiting.length?'none':'block';
+    $('lobbyList').querySelectorAll('.client-card').forEach(e=>e.remove());
+    waiting.sort((a,b)=>data[a].at-data[b].at).forEach(k=>{
+      $('lobbyList').appendChild(makeClientCard(k,data[k]));
+    });
+  });
+
+  db.ref(`${P}lobby/consultants`).on('value',snap=>{
+    const data=snap.val()||{};
+    const others=Object.keys(data).filter(k=>k!==myKey);
+    const oc=$('otherCons');
+    if(others.length){
+      oc.classList.remove('hidden');
+      $('ocChips').innerHTML=others.map(k=>`<div class="oc-chip"><div class="oc-dot"></div>${esc(data[k].nick||'')}</div>`).join('');
+    } else {
+      oc.classList.add('hidden');
+    }
+  });
+
+  $('lobbyOut').onclick=()=>{
+    db.ref(`${P}lobby/consultants/${myKey}`).remove();
+    hide('scrLobby');show('scrRole');
+  };
+}
+
+function makeClientCard(key,d){
+  const card=document.createElement('div');card.className='client-card';
+  const icon=d.gender==='여성'?'🌸':d.gender==='남성'?'🌙':'✦';
+  const ago=Math.floor((Date.now()-d.at)/60000);
+  card.innerHTML=`
+    <div class="c-avatar">${icon}</div>
+    <div class="c-info">
+      <div class="c-name">${esc(d.nick||'익명')}</div>
+      <div class="c-meta">${d.age?d.age+'세 · ':''} ${d.gender||''} · ${ago<1?'방금':ago+'분 전'}</div>
+      <div class="c-q">${esc(d.question||'질문 없음')}</div>
+    </div>
+    <div class="c-actions">
+      <button class="btn btn-gold btn-sm" data-k="${key}">상담 시작</button>
+    </div>`;
+  card.querySelector('[data-k]').onclick=()=>startWith(key,d);
+  return card;
+}
+
+async function startWith(clientKey,clientData){
+  const maxC=parseInt($('maxCardsSel').value)||3;
+  const ref=db.ref(`${P}lobby/waiting/${clientKey}/status`);
+  const res=await ref.transaction(s=>{if(s==='waiting')return 'claimed';return undefined;});
+  if(!res.committed){notify('이미 다른 상담사가 선택했어요');return;}
+
+  roomId=Math.random().toString(36).slice(2,8).toUpperCase();
+  maxCards=maxC;
+
+  await db.ref(`${P}sessions/${roomId}`).set({
+    status:'active',round:0,shuffleTs:0,maxCards:maxC,
+    consultantKey:myKey,consultantNick:myNick,clientKey,
+    client:{nick:clientData.nick,age:clientData.age||'',gender:clientData.gender||'',question:clientData.question||''},
+  });
+  await db.ref(`${P}sessions/${roomId}/rounds/0`).set({question:clientData.question||'',ts:Date.now()});
+  await db.ref(`${P}lobby/waiting/${clientKey}/sessionId`).set(roomId);
+
+  db.ref(`${P}lobby/consultants/${myKey}`).remove();
+  hide('scrLobby');
+  enterSession();
+}
+
+/* ═══════════════════════════════
+   CLIENT WAITING
+═══════════════════════════════ */
+let waitCardTimer=null,waitQuoteTimer=null;
+
+function enterWaiting(){
+  const nick=$('kNick').value.trim();
+  const q=$('kQ').value.trim();
+  if(!nick){notify('닉네임을 입력해주세요');return;}
+  if(!q){notify('질문을 입력해주세요');return;}
+
+  myNick=nick;myRole='client';
+  hide('scrKSetup');show('scrKWait');
+  $('waitPosText').textContent=nick+'님 · 대기 중';
+
+  const ref=db.ref(`${P}lobby/waiting/${myKey}`);
+  ref.set({nick,age:$('kAge').value||'',gender:$('kGender').value||'',question:q,at:Date.now(),status:'waiting'});
+  ref.onDisconnect().remove();
+
+  startWaitContent();
+
+  db.ref(`${P}lobby/waiting/${myKey}/sessionId`).on('value',snap=>{
+    if(snap.val()){
+      roomId=snap.val();
+      stopWaitContent();
+      hide('scrKWait');
+      enterSession();
+    }
+  });
+
+  $('waitCancelBtn').onclick=()=>{
+    ref.remove();
+    stopWaitContent();
+    hide('scrKWait');show('scrRole');
+  };
+}
+
+function startWaitContent(){
+  showWaitCard();showWaitQuote();
+  waitCardTimer=setInterval(showWaitCard,10000);
+  waitQuoteTimer=setInterval(showWaitQuote,8000);
+}
+function stopWaitContent(){
+  clearInterval(waitCardTimer);clearInterval(waitQuoteTimer);
+}
+function showWaitCard(){
+  const card=DECK[~~(Math.random()*DECK.length)];
+  const img=$('waitCardImgEl');
+  $('waitCardImg').style.opacity='0';
+  setTimeout(()=>{
+    img.src=cardImg(card);
+    img.onerror=()=>{$('waitCardImg').style.background='#0f0f28';img.style.display='none';};
+    $('waitCardName').textContent=card.kr;
+    $('waitCardMeaning').textContent=MEANINGS[card.id]||'';
+    $('waitCardImg').style.opacity='1';
+  },400);
+}
+function showWaitQuote(){
+  $('waitQuote').textContent='"'+QUOTES[~~(Math.random()*QUOTES.length)]+'"';
+}
+
+/* ═══════════════════════════════
+   SESSION
+═══════════════════════════════ */
+function enterSession(){
+  _flipped.clear();
+  localDeck=rnd([...DECK]);drawnCount=0;
+  show('scrSession');
+  $('sDot').classList.remove('off');
+  $('sInfo').textContent=(myRole==='consultant'?'상담사':'내담자')+' · '+myNick+' · Room '+roomId;
+  if(myRole==='consultant') show('sAddQ');
+
+  $('sAddQ').onclick=requestAddQ;
+  $('sSave').onclick=saveSession;
+  $('sEnd').onclick=endSession;
+  $('sendBtn').onclick=sendMsg;
+  $('chatIn').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg();}});
+  $('chatIn').addEventListener('input',handleTyping);
+
+  // Separate listeners to prevent card re-flip on chat updates
+  listenMeta();
+  listenCards();
+  listenChat();
+  listenTyping();
+}
+
+/* ─ META listener (round, maxCards, shuffleTs, status) ─ */
+function listenMeta(){
+  db.ref(`${P}sessions/${roomId}/status`).on('value',snap=>{
+    if(snap.val()==='ended'&&myRole==='client'){
+      notify('상담이 종료됐어요. 감사합니다 ✦',4000);
+      setTimeout(()=>{hide('scrSession');show('scrRole');},3500);
+    }
+  });
+  db.ref(`${P}sessions/${roomId}/round`).on('value',snap=>{
+    const r=snap.val()||0;
+    if(r!==currentRound){
+      currentRound=r;
+      _flipped.clear();
+      drawnCount=0;
+      localDeck=rnd([...DECK]);
+      rebuildMainStructure();
+    }
+  });
+  db.ref(`${P}sessions/${roomId}/maxCards`).on('value',snap=>{maxCards=snap.val()||3;});
+  db.ref(`${P}sessions/${roomId}/shuffleTs`).on('value',snap=>{
+    const ts=snap.val()||0;
+    if(myRole==='consultant'&&ts>prevShufTs){
+      prevShufTs=ts;
+      const st=$('deckStack');if(st)playShuffleAnim(st);
+    }
+  });
+  // Initial build
+  db.ref(`${P}sessions/${roomId}/round`).once('value').then(snap=>{
+    currentRound=snap.val()||0;
+    rebuildMainStructure();
+    updatePinnedQ();
+  });
+}
+
+/* ─ CARDS listener (only updates cards area, no full re-render) ─ */
+function listenCards(){
+  db.ref(`${P}sessions/${roomId}/rounds`).on('value',snap=>{
+    const rounds=snap.val()||{};
+    updateCardsAreas(rounds);
+    updatePinnedQFromRounds(rounds);
+  });
+}
+
+/* Rebuild the main area structure (deck, labels) but NOT card DOM */
+function rebuildMainStructure(){
+  const area=$('mainArea');area.innerHTML='';
+  // Past rounds - static
+  for(let i=0;i<currentRound;i++){
+    const block=document.createElement('div');block.className='round-block';block.id=`rb-${i}`;
+    block.innerHTML=`<div class="rb-title">ROUND ${i+1} · 완료</div>
+      <div class="rb-q" id="rbq-${i}"></div>
+      <div class="drawn-area" id="da-${i}" style="min-height:50px"></div>`;
+    area.appendChild(block);
+  }
+  // Current round
+  const curSec=document.createElement('div');curSec.id='cur-sec';
+  if(myRole==='consultant'){
+    curSec.innerHTML=`<div class="sec-lbl" id="cur-lbl">ROUND ${currentRound+1} · 실시간 감상</div>`;
+    curSec.appendChild(buildDeckUI(false));
+  } else {
+    curSec.innerHTML=`<div class="sec-lbl" id="cur-lbl">ROUND ${currentRound+1}</div>`;
+    const qSec=document.createElement('div');qSec.id='q-sec-wrap';
+    curSec.appendChild(qSec);
+  }
+  const da=document.createElement('div');da.className='drawn-area';da.id=`da-${currentRound}`;
+  curSec.appendChild(da);
+  area.appendChild(curSec);
+}
+
+/* Update cards in existing DOM areas without rebuilding */
+function updateCardsAreas(rounds){
+  Object.keys(rounds).forEach(ri=>{
+    const n=Number(ri);
+    const rdata=rounds[ri]||{};
+    // Update question label for past rounds
+    const qEl=$(`rbq-${n}`);
+    if(qEl&&rdata.question) qEl.textContent=rdata.question;
+
+    // Update current round Q section
+    if(n===currentRound){
+      updateCurrentQSection(rdata);
+    }
+
+    // Update cards area
+    const area=$(`da-${n}`);
+    if(!area) return;
+    const cards=rdata.cards||{};
+    const cks=Object.keys(cards).sort((a,b)=>cards[a].ts-cards[b].ts);
+    cks.forEach((k,i)=>{
+      if(area.querySelector(`[data-ck="${k}"]`)) return; // already rendered
+      const card=DECK.find(d=>d.id===cards[k].id);if(!card)return;
+      const flipKey=`${n}_${k}`;
+      const already=n<currentRound||_flipped.has(flipKey);
+      const wrap=makeCardEl(card,cards[k],k,n,already,i+1);
+      wrap.dataset.ck=k;
+      area.appendChild(wrap);
+      if(n===currentRound&&myRole==='consultant'){
+        const ce=makeCommentEditor(k,cards[k].comment||'');ce.dataset.ck=k;
+        area.appendChild(ce);
+      }
+      // Update empty message
+      area.querySelectorAll('.empty-msg').forEach(e=>e.remove());
+
+      if(!already){
+        const ci=wrap.querySelector('.ci');
+        if(ci) setTimeout(()=>{ci.classList.add('flipped');_flipped.add(flipKey);},80+i*70);
+      }
+    });
+
+    // Update comment indicators
+    cks.forEach(k=>{
+      const wrap=area.querySelector(`[data-ck="${k}"]`);
+      if(!wrap) return;
+      const ind=wrap.querySelector('.dc-comment-ind');
+      if(cards[k].comment&&!ind){
+        const ci2=document.createElement('div');ci2.className='dc-comment-ind';ci2.textContent='✦ 코멘트';
+        wrap.appendChild(ci2);
+      } else if(!cards[k].comment&&ind){
+        ind.remove();
+      }
+    });
+  });
+}
+
+function updateCurrentQSection(rdata){
+  if(myRole==='client'){
+    const wrap=$('q-sec-wrap');if(!wrap) return;
+    const q=rdata.question||'';
+    const deckExists=!!$('deckStack');
+    if(!q){
+      if(!wrap.querySelector('#qTA')){
+        wrap.innerHTML='';wrap.appendChild(buildQInput(currentRound>0));
+      }
+      if(deckExists) $('deckStack').closest('.deck-sec')?.remove();
+    } else {
+      if(!deckExists){
+        wrap.innerHTML='';
+        const curSec=$('cur-sec');
+        if(curSec){
+          const deckUI=buildDeckUI(true);
+          const da=$(`da-${currentRound}`);
+          curSec.insertBefore(deckUI,da);
+        }
+      }
+      if(wrap.querySelector('#qTA')) wrap.innerHTML='';
+    }
+  }
+}
+
+function updatePinnedQ(){
+  db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/question`).once('value').then(snap=>{
+    const q=snap.val()||'';
+    const bar=$('pqBar');
+    if(q){bar.classList.remove('hidden');$('pqTxt').textContent=q;$('pqRnd').textContent='Round '+(currentRound+1);}
+    else bar.classList.add('hidden');
+  });
+}
+function updatePinnedQFromRounds(rounds){
+  const cur=rounds[currentRound]||{};
+  const q=cur.question||'';
+  const bar=$('pqBar');
+  if(q){bar.classList.remove('hidden');$('pqTxt').textContent=q;$('pqRnd').textContent='Round '+(currentRound+1);}
+  else bar.classList.add('hidden');
+}
+
+/* ─ Q INPUT UI ─ */
+function buildQInput(isAdd){
+  const sec=document.createElement('div');sec.className='q-sec';
+  sec.innerHTML=`
+    <div class="q-title">${isAdd?`✦ 추가 질문 — Round ${currentRound+1}`:'✦ 오늘의 질문'}</div>
+    <div class="q-desc">${isAdd?'상담사가 추가 질문을 요청했어요.<br>새 질문을 적어주세요.':'마음속에 있는 고민이나 궁금한 것을 적어주세요.'}</div>
+    <div class="field"><textarea id="qTA" placeholder="질문을 입력하세요..." style="height:75px;width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:10px 13px;color:var(--text);font-family:Noto Sans KR,sans-serif;font-size:13px;resize:none;line-height:1.6"></textarea></div>
+    <button class="btn btn-gold" id="qBtn" style="max-width:240px;margin:0 auto">질문 확정 →</button>`;
+  setTimeout(()=>{
+    const btn=$('qBtn'),ta=$('qTA');
+    if(btn&&ta) btn.onclick=()=>{
+      const q=ta.value.trim();if(!q){notify('질문을 입력해주세요');return;}
+      db.ref(`${P}sessions/${roomId}/rounds/${currentRound}`).set({question:q,ts:Date.now()});
+      sendSysMsg(`✦ [Round ${currentRound+1}] 질문: ${q}`);
+    };
+  },50);
+  return sec;
+}
+
+/* ─ DECK UI ─ */
+function buildDeckUI(interactive){
+  const sec=document.createElement('div');sec.className='deck-sec';
+  sec.innerHTML=`
+    <div class="deck-lbl">${interactive?'마음을 모아 셔플 후 카드를 뽑아보세요':'내담자 덱 · 실시간'}</div>
+    <div class="deck-stack${interactive?' ih':''}" id="deckStack">
+      <div class="dshadow"></div><div class="dshadow"></div>
+      <div class="dtop"><div class="cbf"><div class="cbstar">✦</div></div></div>
+    </div>
+    <div class="deck-btns">
+      ${interactive?`<button class="shuf-btn" id="shufBtn">◈ 셔플</button>
+      <button class="btn btn-gold btn-sm" id="drawBtn">카드 뽑기</button>
+      <span class="draw-count" id="drawCount">${drawnCount}/${maxCards}장</span>`:''}
+    </div>`;
+  if(interactive) setTimeout(()=>{
+    const sb=$('shufBtn'),db2=$('drawBtn');
+    if(sb) sb.onclick=doShuffle;
+    if(db2) db2.onclick=doDrawCard;
+  },50);
+  return sec;
+}
+
+/* ─ CARD EL ─ */
+function makeCardEl(card,cardData,cardKey,roundNum,alreadyFlipped,cardNum){
+  const wrap=document.createElement('div');wrap.className='dc-wrap';
+  wrap.style.position='relative';
+  if(cardNum){
+    const nb=document.createElement('div');
+    nb.style.cssText='position:absolute;top:-7px;left:-7px;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#05050e;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:5;box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:Noto Sans KR,sans-serif';
+    nb.textContent=cardNum;
+    wrap.appendChild(nb);
+  }
+  const cw=document.createElement('div');cw.className='cw';
+  cw.onclick=()=>revealCard(card,cardData,cardKey,roundNum);
+  const ci=document.createElement('div');ci.className='ci'+(alreadyFlipped?' flipped':'');
+  const back=document.createElement('div');back.className='cb';
+  back.innerHTML='<div class="cbf"><div class="cbstar">✦</div></div>';
+  const front=document.createElement('div');front.className='cf';
+  front.innerHTML=`<img src="${cardImg(card)}" alt="${esc(card.name)}"
+    onerror="this.style.display='none';this.nextSibling.style.display='flex'">
+    <div class="cf-fb" style="display:none">
+      <div class="cs">${SICON[card.suit]||'✦'}</div>
+      <div class="cn">${esc(card.name)}</div><div class="ck">${esc(card.kr)}</div>
+    </div>`;
+  ci.appendChild(back);ci.appendChild(front);cw.appendChild(ci);wrap.appendChild(cw);
+  const lbl=document.createElement('div');lbl.className='dc-lbl';lbl.textContent=card.kr;wrap.appendChild(lbl);
+  if(cardData.comment){
+    const ci2=document.createElement('div');ci2.className='dc-comment-ind';ci2.textContent='✦ 코멘트';wrap.appendChild(ci2);
+  }
+  return wrap;
+}
+
+function makeCommentEditor(cardKey,existing){
+  const wrap=document.createElement('div');wrap.className='comment-editor';
+  const ta=document.createElement('textarea');ta.className='comment-ta';
+  ta.placeholder='이 카드에 대한 코멘트... (내담자에게도 보여요)';
+  ta.value=existing||'';
+  const sv=document.createElement('button');sv.className='comment-save';sv.textContent='코멘트 저장';
+  sv.onclick=()=>{
+    const v=ta.value.trim();
+    db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/${cardKey}/comment`).set(v||null);
+    notify(v?'코멘트 저장됐어요 ✦':'코멘트 삭제됐어요');
+  };
+  wrap.appendChild(ta);wrap.appendChild(sv);
+  return wrap;
+}
+
+function revealCard(card,cardData,cardKey,roundNum){
+  const meaning=MEANINGS[card.id]||'';
+  const comment=cardData.comment||'';
+  const ov=document.createElement('div');ov.className='overlay';
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  ov.innerHTML=`<div class="rev-box">
+    <div class="rev-img"><img src="${cardImg(card)}" alt="${esc(card.name)}"
+      onerror="this.parentElement.style.background='#14142e';this.style.display='none'"></div>
+    <div class="rev-name">${esc(card.name)}</div>
+    <div class="rev-kr">${esc(card.kr)}</div>
+    <div class="rev-meaning-box"><div class="rev-box-lbl">일반적인 의미</div><div class="rev-box-txt">${esc(meaning)}</div></div>
+    ${comment?`<div class="rev-comment-box"><div class="rev-comment-lbl">상담사 코멘트</div><div class="rev-comment-txt">${esc(comment)}</div></div>`:''}
+    <div class="rev-close">[ 닫기 ]</div>
+  </div>`;
+  ov.querySelector('.rev-close').onclick=()=>ov.remove();
+  document.body.appendChild(ov);
+}
+
+/* ═══════════════════════════════
+   SHUFFLE + DRAW
+═══════════════════════════════ */
+function doShuffle(){
+  const sb=$('shufBtn'),db2=$('drawBtn');
+  if(sb)sb.disabled=true;if(db2)db2.disabled=true;
+  db.ref(`${P}sessions/${roomId}/shuffleTs`).set(Date.now());
+  playShuffleAnim($('deckStack'),()=>{
+    localDeck=rnd([...DECK]);drawnCount=0;
+    _flipped.forEach((k,_)=>{if(k.startsWith(`${currentRound}_`))_flipped.delete(k);});
+    db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).remove();
+    const area=$(`da-${currentRound}`);if(area)area.innerHTML='';
+    if(sb)sb.disabled=false;if(db2)db2.disabled=false;
+    const dc=$('drawCount');if(dc)dc.textContent=`0/${maxCards}장`;
+    notify('셔플 완료 ✦');
+  });
+}
+
+function playShuffleAnim(stack,cb){
+  if(!stack)return;
+  const r=stack.getBoundingClientRect();
+  const cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const dirs=[[-100,-50,-25],[90,-70,20],[-70,60,-30],[80,45,18],[-40,-80,-15],[60,-55,28],[10,90,-22]];
+  const fc=dirs.map(([dx,dy,rot])=>{
+    const el=document.createElement('div');el.className='shuf-card';
+    el.innerHTML='<div class="cbf" style="border-radius:7px"><div class="cbstar">✦</div></div>';
+    el.style.cssText=`left:${cx-44}px;top:${cy-75}px;transition:transform .45s cubic-bezier(.4,0,.2,1),opacity .45s`;
+    document.body.appendChild(el);return{el,dx,dy,rot};
+  });
+  requestAnimationFrame(()=>fc.forEach(({el,dx,dy,rot})=>{el.style.transform=`translate(${dx}px,${dy}px) rotate(${rot}deg)`;el.style.opacity='.85';}));
+  setTimeout(()=>{
+    fc.forEach(({el})=>{el.style.transform='translate(0,0)';el.style.opacity='0';});
+    setTimeout(()=>{fc.forEach(({el})=>el.remove());if(cb)cb();},480);
+  },540);
+}
+
+function doDrawCard(){
+  db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).once('value').then(snap=>{
+    const drawn=Object.keys(snap.val()||{}).length;
+    if(drawn>=maxCards){notify(`최대 ${maxCards}장까지만 뽑을 수 있어요`);return;}
+    const card=localDeck[drawn];
+    if(!card){notify('덱이 비었어요. 셔플해주세요.');return;}
+    db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()}`).set({id:card.id,ts:Date.now()});
+    sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
+    const dc=$('drawCount');if(dc)dc.textContent=`${drawn+1}/${maxCards}장`;
+  });
+}
+
+/* ═══════════════════════════════
+   ADDITIONAL QUESTION
+═══════════════════════════════ */
+function requestAddQ(){
+  if(!confirm('내담자에게 추가 질문을 요청할까요?'))return;
+  const next=currentRound+1;
+  db.ref(`${P}sessions/${roomId}/round`).set(next);
+  db.ref(`${P}sessions/${roomId}/shuffleTs`).set(0);
+  prevShufTs=0;
+  sendSysMsg(`✦ 상담사가 추가 질문을 요청했어요 — Round ${next+1}`);
+  notify('추가 질문 요청을 보냈어요');
+}
+
+/* ═══════════════════════════════
+   CHAT + TYPING
+═══════════════════════════════ */
+function listenChat(){
+  db.ref(`${P}sessions/${roomId}/chat`).on('value',snap=>{
+    const msgs=Object.values(snap.val()||{}).sort((a,b)=>a.ts-b.ts);
+    const box=$('chatMsgs');box.innerHTML='';
+    msgs.forEach(m=>{
+      const el=document.createElement('div');
+      if(m.sys){el.className='msg msg-sys';el.textContent=m.text;}
+      else{
+        el.className='msg msg-'+(m.role==='consultant'?'c':'k');
+        const nm=document.createElement('div');nm.className='msg-name';
+        nm.textContent=m.nick||(m.role==='consultant'?'상담사':'내담자');
+        el.appendChild(nm);
+        const tx=document.createElement('div');tx.textContent=m.text;el.appendChild(tx);
+      }
+      box.appendChild(el);
+    });
+    box.scrollTop=box.scrollHeight;
+    if(activeTab==='card'){
+      unreadChat++;
+      const badge=$('chatBadge');
+      if(badge){badge.textContent=unreadChat>9?'9+':unreadChat;badge.classList.remove('hidden');}
+    }
+  });
+}
+
+function sendMsg(){
+  const inp=$('chatIn'),txt=inp.value.trim();if(!txt)return;
+  db.ref(`${P}sessions/${roomId}/chat`).push({role:myRole,nick:myNick,text:txt,ts:Date.now()});
+  inp.value='';
+  clearTimeout(typingTimer);
+  db.ref(`${P}sessions/${roomId}/typing/${myRole}`).set(0);
+}
+
+function sendSysMsg(t){
+  db.ref(`${P}sessions/${roomId}/chat`).push({sys:true,text:t,ts:Date.now()});
+}
+
+function handleTyping(){
+  db.ref(`${P}sessions/${roomId}/typing/${myRole}`).set(Date.now());
+  clearTimeout(typingTimer);
+  typingTimer=setTimeout(()=>db.ref(`${P}sessions/${roomId}/typing/${myRole}`).set(0),3000);
+}
+
+function listenTyping(){
+  const other=myRole==='consultant'?'client':'consultant';
+  db.ref(`${P}sessions/${roomId}/typing/${other}`).on('value',snap=>{
+    const ts=snap.val()||0;
+    const isTyping=ts&&(Date.now()-ts<3500);
+    const ind=$('typingInd');
+    if(ind){
+      if(isTyping){ind.classList.remove('hidden');ind.textContent=(other==='consultant'?'상담사':'내담자')+'가 입력 중...';}
+      else ind.classList.add('hidden');
+    }
+  });
+}
+
+/* ═══════════════════════════════
+   MOBILE TAB
+═══════════════════════════════ */
+function switchTab(tab){
+  activeTab=tab;
+  const main=$('mainArea'),chat=$('chatCol');
+  if(tab==='card'){
+    main.style.display='';
+    chat.style.cssText='display:none!important';
+    $('tabCard').classList.add('active');$('tabChat').classList.remove('active');
+  } else {
+    main.style.display='none';
+    chat.style.cssText='display:flex;flex-direction:column;width:100%;min-width:0;flex:1';
+    $('tabChat').classList.add('active');$('tabCard').classList.remove('active');
+    unreadChat=0;const badge=$('chatBadge');if(badge)badge.classList.add('hidden');
+    setTimeout(()=>{const b=$('chatMsgs');if(b)b.scrollTop=b.scrollHeight;},50);
+  }
+}
+
+/* ═══════════════════════════════
+   SAVE + END
+═══════════════════════════════ */
+function doSaveFile(){
+  return db.ref(`${P}sessions/${roomId}`).once('value').then(snap=>{
+    const d=snap.val()||{};
+    const rounds=d.rounds||{};
+    const msgs=Object.values(d.chat||{}).sort((a,b)=>a.ts-b.ts);
+    let txt=`✦ MYSTIC TAROT 상담 기록\n날짜: ${new Date().toLocaleString('ko-KR')}\nRoom: ${roomId}\n상담사: ${d.consultantNick||''}\n내담자: ${(d.client||{}).nick||''}\n\n`;
+    Object.keys(rounds).sort().forEach(ri=>{
+      const r=rounds[ri];
+      txt+=`── Round ${+ri+1} ──\n질문: ${r.question||''}\n`;
+      Object.values(r.cards||{}).sort((a,b)=>a.ts-b.ts).forEach((c,i)=>{
+        const card=DECK.find(d=>d.id===c.id);
+        if(card){txt+=`  ${i+1}. ${card.name} (${card.kr})\n`;if(c.comment)txt+=`     → ${c.comment}\n`;}
+      });
+      txt+='\n';
+    });
+    txt+=`── 채팅 내역 ──\n`;
+    msgs.forEach(m=>{
+      if(m.sys)txt+=`[알림] ${m.text}\n`;
+      else txt+=`[${m.nick||m.role}] ${m.text}\n`;
+    });
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain;charset=utf-8'}));
+    a.download=`tarot-${roomId}-${Date.now()}.txt`;a.click();
+    notify('저장됐어요 ✦');
+  });
+}
+
+function saveSession(){ doSaveFile(); }
+
+function endSession(){
+  if(myRole==='consultant'){
+    if(!confirm('상담을 종료할까요?'))return;
+    // Ask about saving
+    const wantSave=confirm('상담 내역을 저장하시겠어요?');
+    const finish=()=>{
+      db.ref(`${P}sessions/${roomId}/status`).set('ended');
+      sendSysMsg('✦ 상담이 종료됐습니다');
+      // Expire the session link
+      db.ref(`${P}sessions/${roomId}/endedAt`).set(Date.now());
+      notify('상담이 종료됐어요');
+      setTimeout(()=>{hide('scrSession');show('scrRole');},1500);
+    };
+    if(wantSave) doSaveFile().then(finish);
+    else finish();
+  } else {
+    // Client just exits, no save
+    if(!confirm('상담을 나가시겠어요?'))return;
+    hide('scrSession');show('scrRole');
+  }
+}
+
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
