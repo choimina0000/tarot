@@ -26,6 +26,15 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 @keyframes bootup{0%{opacity:0;letter-spacing:20px}60%{opacity:1;letter-spacing:8px}100%{letter-spacing:8px}}
 @keyframes cursor{0%,100%{opacity:1}50%{opacity:0}}
 @keyframes hexpulse{0%,100%{opacity:.04}50%{opacity:.09}}
+
+/* TAROT 반짝임 */
+.logo-wrap{position:relative;}
+.tarot-sparkle{position:absolute;border-radius:50%;pointer-events:none;
+  animation:sparkle-fade var(--sd,.8s) ease-out forwards;}
+@keyframes sparkle-fade{
+  0%{opacity:.9;transform:translate(-50%,-50%) scale(1);}
+  100%{opacity:0;transform:translate(-50%,-50%) translateY(var(--sy,-12px)) scale(.2);}
+}
 @keyframes btnready{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0)}50%{box-shadow:0 0 0 6px rgba(201,168,76,.08)}}
 @keyframes roledot{0%{transform:scale(1);opacity:.6}50%{transform:scale(1.4);opacity:1}100%{transform:scale(1);opacity:.6}}
 
@@ -36,13 +45,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
   animation:scanline 8s linear infinite;}
 
 /* 헥사 그리드 패턴 */
-.hex-grid{position:fixed;inset:0;z-index:1;pointer-events:none;
-  background-image:
-    linear-gradient(rgba(180,160,255,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(180,160,255,.06) 1px, transparent 1px);
-  background-size:60px 60px;
-  animation:hexpulse 4s ease-in-out infinite;
-  mask-image:radial-gradient(ellipse at 30% 50%, black 0%, transparent 65%);}
+
 
 /* 로고 글리치 */
 .logo-main{animation:glitch2 6s ease-in-out infinite;}
@@ -176,7 +179,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 .completion-cards{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:flex-start}
 .completion-card-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
 .completion-cw{position:relative;width:150px;height:256px;perspective:800px;cursor:pointer}
-.completion-cw .ci{width:100%;height:100%;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.4,0,.2,1)}
+.completion-cw .ci{width:100%;height:100%;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.175,.885,.32,1.275)}
 .completion-cw .ci.flipped{transform:rotateY(180deg)}
 .completion-cw .cf,.completion-cw .cb{position:absolute;inset:0;border-radius:10px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--border2);}
 .completion-cw .cf{transform:rotateY(180deg)}
@@ -395,7 +398,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 
 /* CARD FLIP */
 .cw{position:relative;width:var(--cw);height:var(--ch);perspective:800px;flex-shrink:0;cursor:pointer}
-.ci{width:100%;height:100%;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.4,0,.2,1)}
+.ci{width:100%;height:100%;transform-style:preserve-3d;transition:transform .85s cubic-bezier(.175,.885,.32,1.275)}
 .ci.flipped{transform:rotateY(180deg)}
 .cf,.cb{position:absolute;inset:0;border-radius:8px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--border2)}
 .cf{transform:rotateY(180deg)}
@@ -500,7 +503,6 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 </head>
 <body>
 <canvas id="stars"></canvas>
-<div class="hex-grid"></div>
 <div class="scanline-wrap"><div class="scanline"></div></div>
 <div class="game-hud" id="gameHud">
   <div class="hud-line">
@@ -510,6 +512,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
   <div class="hud-line"><span>LAKE TAROT · SYSTEM ONLINE</span></div>
 </div>
 <canvas id="wofCanvas" style="position:fixed;inset:0;z-index:1;pointer-events:none"></canvas>
+<canvas id="ismCanvas" style="position:fixed;inset:0;z-index:1;pointer-events:none"></canvas>
 
 <!-- ① ROLE SELECT -->
 <div id="scrRole" class="screen" style="justify-content:center;align-items:center;padding:20px">
@@ -994,34 +997,27 @@ const QUOTES=[
       const sdy=Math.cos(driftT*14*parallax+st.x*.003)*H*parallax*.3;
       const p=.45+.55*Math.sin(t/st.sp+st.x*.008);
       const a=st.o*p;
-      if(st.bright){
-        const grd=ctx.createRadialGradient(st.x,st.y,0,st.x,st.y,st.r*10);
-        grd.addColorStop(0,`hsla(${st.hue},80%,95%,${a*.9})`);
-        grd.addColorStop(1,'transparent');
-        ctx.fillStyle=grd;
-        ctx.beginPath();ctx.arc(st.x+sdx,st.y+sdy,st.r*10,0,Math.PI*2);ctx.fill();
-        for(let k=0;k<4;k++){
-          ctx.save();ctx.translate(st.x+sdx,st.y+sdy);ctx.rotate(k*Math.PI/4+t*.1);
-          const lg=ctx.createLinearGradient(0,-st.r*16,0,st.r*16);
-          lg.addColorStop(0,'transparent');
-          lg.addColorStop(.5,`hsla(${st.hue},90%,98%,${a*.45})`);
-          lg.addColorStop(1,'transparent');
-          ctx.fillStyle=lg;
-          ctx.fillRect(-st.r*.25,-st.r*16,st.r*.5,st.r*32);
-          ctx.restore();
-        }
-      }
       ctx.beginPath();ctx.arc(st.x+sdx,st.y+sdy,st.r,0,Math.PI*2);
-      ctx.fillStyle=`hsla(${st.hue},50%,${st.bright?100:92}%,${a})`;
+      ctx.fillStyle=`hsla(${st.hue},40%,92%,${a})`;
       ctx.fill();
     });
 
     // 유성
-    if(t*1000-lastMeteorTime>2500+Math.random()*5000){
+    // 랜덤 빈도로 1~3개씩 유성 생성
+    if(t*1000-lastMeteorTime>800+Math.random()*3000){
       lastMeteorTime=t*1000;
-      meteors.push({x:Math.random()*W*.7,y:Math.random()*H*.4,
-        len:100+Math.random()*200,angle:Math.PI/5+Math.random()*.25,
-        speed:10+Math.random()*8,life:1,hue:210+Math.random()*30});
+      const burst=Math.floor(Math.random()*3)+1;
+      for(let mi=0;mi<burst;mi++){
+        meteors.push({
+          x:Math.random()*W*.8, y:Math.random()*H*.45,
+          len:60+Math.random()*220,
+          angle:Math.PI/6+Math.random()*.4,
+          speed:8+Math.random()*14,
+          life:1+Math.random()*.3,
+          hue:200+Math.random()*50,
+          width:1+Math.random()*1.5
+        });
+      }
     }
     meteors=meteors.filter(m=>{
       m.x+=Math.cos(m.angle)*m.speed; m.y+=Math.sin(m.angle)*m.speed; m.life-=.025;
@@ -1032,7 +1028,7 @@ const QUOTES=[
       ctx.beginPath();
       ctx.moveTo(m.x-Math.cos(m.angle)*m.len,m.y-Math.sin(m.angle)*m.len);
       ctx.lineTo(m.x,m.y);
-      ctx.strokeStyle=mg;ctx.lineWidth=1.5*m.life;ctx.stroke();
+      ctx.strokeStyle=mg;ctx.lineWidth=(m.width||1.5)*m.life;ctx.stroke();
       return true;
     });
 
@@ -1061,11 +1057,13 @@ setInterval(()=>{
   function resizeWof(){W=wc.width=innerWidth;H=wc.height=innerHeight;}
   window.addEventListener('resize',resizeWof);resizeWof();
 
-  // 우측 상단에 -π ~ -π/2 구간만 보이도록 (4분의 1원)
-  // 바퀴 중심을 우측 상단 모서리 바깥에 배치
+  // 우측 상단: 중심을 우측 상단 모서리 바깥
   const R=()=>Math.min(W,H)*.32;
-  const CX=()=>W+R()*.02;   // 오른쪽 바깥
-  const CY=()=>-R()*.02;    // 위쪽 바깥
+  const CX=()=>W+R()*.02;
+  const CY=()=>-R()*.02;
+  // 좌측 하단: 대칭 위치
+  const CX2=()=>-R()*.02;
+  const CY2=()=>H+R()*.02;
 
   // 흰빛 별 색상
   const C1='rgba(220,215,255,', C2='rgba(200,195,240,', C3='rgba(255,255,255,';
@@ -1077,19 +1075,16 @@ setInterval(()=>{
 
     wx.save();wx.translate(x,y);wx.rotate(rot);
 
-    // 후광 (은은한 흰빛)
-    const glow=wx.createRadialGradient(0,0,r*.3,0,0,r*1.6);
-    glow.addColorStop(0,'rgba(200,195,255,.06)');
-    glow.addColorStop(.5,'rgba(180,170,240,.03)');
-    glow.addColorStop(1,'transparent');
-    wx.fillStyle=glow;
-    wx.beginPath();wx.arc(0,0,r*1.6,0,Math.PI*2);wx.fill();
 
-    // 바깥 원 (가장 외곽)
+
+    // 바깥 원 - 그라데이언트 stroke
     wx.beginPath();wx.arc(0,0,r,0,Math.PI*2);
-    wx.strokeStyle=C1+'.45)';wx.lineWidth=1.2;
-    wx.shadowColor='rgba(220,215,255,.3)';wx.shadowBlur=8;
-    wx.stroke();wx.shadowBlur=0;
+    const og=wx.createLinearGradient(-r,-r,r,r);
+    og.addColorStop(0,'rgba(255,255,255,.55)');
+    og.addColorStop(.4,'rgba(200,195,255,.35)');
+    og.addColorStop(.7,'rgba(255,255,255,.5)');
+    og.addColorStop(1,'rgba(200,195,255,.3)');
+    wx.strokeStyle=og;wx.lineWidth=1.5;wx.stroke();
 
     // 두번째 원
     wx.beginPath();wx.arc(0,0,r*.78,0,Math.PI*2);
@@ -1103,11 +1098,13 @@ setInterval(()=>{
       wx.strokeStyle=C2+'.2)';wx.lineWidth=.8;wx.stroke();
     }
 
-    // 중간 원
+    // 중간 원 그라데이션
     wx.beginPath();wx.arc(0,0,r*.52,0,Math.PI*2);
-    wx.strokeStyle=C1+'.3)';wx.lineWidth=1;
-    wx.shadowColor='rgba(220,215,255,.2)';wx.shadowBlur=6;
-    wx.stroke();wx.shadowBlur=0;
+    const mg2=wx.createLinearGradient(-r*.52,0,r*.52,0);
+    mg2.addColorStop(0,'rgba(255,255,255,.4)');
+    mg2.addColorStop(.5,'rgba(210,205,255,.25)');
+    mg2.addColorStop(1,'rgba(255,255,255,.4)');
+    wx.strokeStyle=mg2;wx.lineWidth=1;wx.stroke();
 
     // 안쪽 원
     wx.beginPath();wx.arc(0,0,r*.28,0,Math.PI*2);
@@ -1116,7 +1113,7 @@ setInterval(()=>{
     // 중심 원
     wx.beginPath();wx.arc(0,0,r*.1,0,Math.PI*2);
     const ig=wx.createRadialGradient(0,0,0,0,0,r*.1);
-    ig.addColorStop(0,C3+'.25)');ig.addColorStop(1,C1+'.05)');
+    ig.addColorStop(0,'rgba(255,255,255,.45)');ig.addColorStop(1,'rgba(200,195,255,.08)');
     wx.fillStyle=ig;wx.fill();
     wx.strokeStyle=C1+'.35)';wx.lineWidth=.8;wx.stroke();
 
@@ -1125,7 +1122,7 @@ setInterval(()=>{
       const a=i*Math.PI/4;
       const px=r*Math.cos(a),py=r*Math.sin(a);
       wx.beginPath();wx.arc(px,py,r*.022,0,Math.PI*2);
-      wx.fillStyle=C1+'.5)';wx.fill();
+      wx.fillStyle='rgba(240,238,255,.65)';wx.fill();
     }
 
     // 중간원 위 작은 점
@@ -1144,7 +1141,72 @@ setInterval(()=>{
       const a=i*Math.PI/4+rot;
       wx.save();wx.translate(Math.cos(a)*r*.88,Math.sin(a)*r*.88);
       wx.rotate(a+Math.PI/2);
-      wx.fillStyle=C1+'.5)';
+      wx.fillStyle='rgba(240,238,255,.65)';
+      wx.font=`${r*.085}px Cinzel,serif`;
+      wx.textAlign='center';wx.textBaseline='middle';
+      wx.fillText(s,0,0);
+      wx.restore();
+    });
+    wx.restore();
+
+    // ── 좌측 하단 대칭 수레바퀴
+    const x2=CX2(),y2=CY2();
+    wx.save();wx.translate(x2,y2);wx.rotate(-rot); // 반대 방향 회전으로 대칭감
+
+    wx.beginPath();wx.arc(0,0,r,0,Math.PI*2);
+    const og2=wx.createLinearGradient(-r,r,r,-r);
+    og2.addColorStop(0,'rgba(255,255,255,.55)');
+    og2.addColorStop(.4,'rgba(200,195,255,.35)');
+    og2.addColorStop(.7,'rgba(255,255,255,.5)');
+    og2.addColorStop(1,'rgba(200,195,255,.3)');
+    wx.strokeStyle=og2;wx.lineWidth=1.5;wx.stroke();
+
+    wx.beginPath();wx.arc(0,0,r*.78,0,Math.PI*2);
+    wx.strokeStyle=C1+'.25)';wx.lineWidth=.8;wx.stroke();
+
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6;
+      wx.beginPath();wx.moveTo(r*.14*Math.cos(a),r*.14*Math.sin(a));
+      wx.lineTo(r*.76*Math.cos(a),r*.76*Math.sin(a));
+      wx.strokeStyle=C2+'.2)';wx.lineWidth=.8;wx.stroke();
+    }
+
+    wx.beginPath();wx.arc(0,0,r*.52,0,Math.PI*2);
+    const mg3=wx.createLinearGradient(-r*.52,0,r*.52,0);
+    mg3.addColorStop(0,'rgba(255,255,255,.4)');
+    mg3.addColorStop(.5,'rgba(210,205,255,.25)');
+    mg3.addColorStop(1,'rgba(255,255,255,.4)');
+    wx.strokeStyle=mg3;wx.lineWidth=1;wx.stroke();
+
+    wx.beginPath();wx.arc(0,0,r*.28,0,Math.PI*2);
+    wx.strokeStyle=C1+'.2)';wx.lineWidth=.7;wx.stroke();
+
+    wx.beginPath();wx.arc(0,0,r*.1,0,Math.PI*2);
+    const ig2=wx.createRadialGradient(0,0,0,0,0,r*.1);
+    ig2.addColorStop(0,'rgba(255,255,255,.45)');ig2.addColorStop(1,'rgba(200,195,255,.08)');
+    wx.fillStyle=ig2;wx.fill();
+    wx.strokeStyle=C1+'.35)';wx.lineWidth=.8;wx.stroke();
+
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4;
+      wx.beginPath();wx.arc(r*Math.cos(a),r*Math.sin(a),r*.022,0,Math.PI*2);
+      wx.fillStyle=C1+'.5)';wx.fill();
+    }
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6;
+      wx.beginPath();wx.arc(r*.52*Math.cos(a),r*.52*Math.sin(a),r*.012,0,Math.PI*2);
+      wx.fillStyle=C2+'.4)';wx.fill();
+    }
+    wx.restore();
+
+    // 좌측 하단 문자
+    wx.save();wx.translate(x2,y2);
+    const syms2=['E','K','A','L','·','T','O','R'];
+    syms2.forEach((s,i)=>{
+      const a=i*Math.PI/4-rot;
+      wx.save();wx.translate(Math.cos(a)*r*.88,Math.sin(a)*r*.88);
+      wx.rotate(a+Math.PI/2);
+      wx.fillStyle='rgba(240,238,255,.65)';
       wx.font=`${r*.085}px Cinzel,serif`;
       wx.textAlign='center';wx.textBaseline='middle';
       wx.fillText(s,0,0);
@@ -1155,6 +1217,125 @@ setInterval(()=>{
     requestAnimationFrame(t=>drawWof(t/60));
   }
   requestAnimationFrame(t=>drawWof(t/60));
+})();
+
+/* ═══════════════════════════════
+   INTERSTELLAR MATTER (좌측 하단)
+═══════════════════════════════ */
+(function(){
+  const ic=document.getElementById('ismCanvas');
+  if(!ic)return;
+  const ix=ic.getContext('2d');
+  let W,H;
+
+  function resizeIsm(){W=ic.width=innerWidth;H=ic.height=innerHeight;}
+  window.addEventListener('resize',resizeIsm);resizeIsm();
+
+  // 가스 파티클
+  const PARTICLES=[];
+  function initParticles(){
+    PARTICLES.length=0;
+    const cx=W*.12, cy=H*.82; // 좌측 하단 중심
+    for(let i=0;i<320;i++){
+      const ang=Math.random()*Math.PI*2;
+      const dist=Math.random()*Math.min(W,H)*.22;
+      PARTICLES.push({
+        bx:cx+Math.cos(ang)*dist*1.6, // 기준 x
+        by:cy+Math.sin(ang)*dist*.7,  // 기준 y (타원형)
+        ox:Math.random()*60-30,       // 흔들림 오프셋
+        oy:Math.random()*40-20,
+        r: Math.random()*2.2+.3,
+        hue: 200+Math.random()*80,    // 파랑~보라~핑크
+        o: Math.random()*.55+.08,
+        sp: Math.random()*3+1,
+        phase: Math.random()*Math.PI*2,
+      });
+    }
+  }
+  window.addEventListener('resize',initParticles);
+  initParticles();
+
+  function drawIsm(ts){
+    ix.clearRect(0,0,W,H);
+    const t=ts*.001;
+    const cx=W*.1, cy=H*.85;
+
+    // ── 1. 베이스 글로우 (부드러운 빛 덩어리)
+    const glows=[
+      {dx:0,   dy:0,   rx:W*.18,ry:H*.12, hue:220, o:.06},
+      {dx:W*.06,dy:-H*.04,rx:W*.12,ry:H*.08,hue:260,o:.05},
+      {dx:-W*.04,dy:H*.04,rx:W*.1,ry:H*.07,hue:200,o:.04},
+      {dx:W*.1, dy:H*.03,rx:W*.08,ry:H*.06,hue:300,o:.03},
+    ];
+    glows.forEach(g=>{
+      const gx=cx+g.dx+Math.sin(t*.18+g.hue)*(W*.012);
+      const gy=cy+g.dy+Math.cos(t*.14+g.hue)*(H*.008);
+      ix.save();
+      ix.translate(gx,gy);ix.scale(g.rx/g.ry,1);
+      const grad=ix.createRadialGradient(0,0,0,0,0,g.ry);
+      grad.addColorStop(0,`hsla(${g.hue},70%,65%,${g.o*1.6})`);
+      grad.addColorStop(.4,`hsla(${g.hue+20},60%,50%,${g.o})`);
+      grad.addColorStop(1,'transparent');
+      ix.beginPath();ix.arc(0,0,g.ry,0,Math.PI*2);
+      ix.fillStyle=grad;ix.fill();ix.restore();
+    });
+
+    // ── 2. 필라멘트 (가스 줄기)
+    const filaments=[
+      {sx:.02,sy:.96, ex:.25,ey:.72, hue:210},
+      {sx:.0, sy:.88, ex:.18,ey:.68, hue:250},
+      {sx:.08,sy:.99, ex:.22,ey:.78, hue:230},
+      {sx:.16,sy:.95, ex:.3, ey:.76, hue:190},
+    ];
+    filaments.forEach(f=>{
+      const sx=f.sx*W, sy=f.sy*H, ex=f.ex*W, ey=f.ey*H;
+      const wave=Math.sin(t*.2+f.hue)*(W*.02);
+      const mx=(sx+ex)*.5+wave, my=(sy+ey)*.5;
+      const grad=ix.createLinearGradient(sx,sy,ex,ey);
+      grad.addColorStop(0,'transparent');
+      grad.addColorStop(.3,`hsla(${f.hue},65%,70%,.12)`);
+      grad.addColorStop(.7,`hsla(${f.hue+20},60%,60%,.08)`);
+      grad.addColorStop(1,'transparent');
+      ix.beginPath();ix.moveTo(sx,sy);ix.quadraticCurveTo(mx,my,ex,ey);
+      ix.strokeStyle=grad;ix.lineWidth=6+Math.random()*4;ix.stroke();
+    });
+
+    // ── 3. 가스 파티클
+    PARTICLES.forEach(p=>{
+      const pulse=.4+.6*Math.sin(t/p.sp+p.phase);
+      const px=p.bx+Math.sin(t*.3/p.sp+p.phase)*p.ox;
+      const py=p.by+Math.cos(t*.25/p.sp+p.phase)*p.oy;
+      ix.beginPath();ix.arc(px,py,p.r,0,Math.PI*2);
+      ix.fillStyle=`hsla(${p.hue},60%,80%,${p.o*pulse})`;
+      ix.fill();
+    });
+
+    // ── 4. 밝은 코어 포인트 (성운 중심 별 느낌)
+    const cores=[
+      {x:cx+W*.03, y:cy-H*.06, r:1.8, hue:200},
+      {x:cx+W*.08, y:cy-H*.09, r:1.4, hue:240},
+      {x:cx-W*.02, y:cy-H*.03, r:2,   hue:210},
+    ];
+    cores.forEach(c=>{
+      const grd=ix.createRadialGradient(c.x,c.y,0,c.x,c.y,c.r*12);
+      grd.addColorStop(0,`hsla(${c.hue},80%,95%,.6)`);
+      grd.addColorStop(.3,`hsla(${c.hue},70%,80%,.2)`);
+      grd.addColorStop(1,'transparent');
+      ix.fillStyle=grd;
+      ix.beginPath();ix.arc(c.x,c.y,c.r*12,0,Math.PI*2);ix.fill();
+      ix.beginPath();ix.arc(c.x,c.y,c.r,0,Math.PI*2);
+      ix.fillStyle=`hsla(${c.hue},90%,98%,.9)`;ix.fill();
+    });
+
+    requestAnimationFrame(drawIsm);
+  }
+  requestAnimationFrame(drawIsm);
+
+  // 세션 중 숨기기
+  const obs=new MutationObserver(()=>{
+    ic.style.display=document.body.classList.contains('in-session')?'none':'block';
+  });
+  obs.observe(document.body,{attributes:true,attributeFilter:['class']});
 })();
 
 /* ═══════════════════════════════
@@ -2061,8 +2242,21 @@ function buildDeckUI(interactive,alreadyDrawn){
     ${interactive?'<div class="shuffle-hint">마음이 준비되면 카드를 뽑아보세요</div>':''}`;
   if(interactive) setTimeout(()=>{
     const sb=$('shufBtn'),db2=$('drawBtn');
-    if(sb) sb.onclick=doShuffle;
-    if(db2) db2.onclick=doDrawCard;
+    if(sb) sb.onclick=()=>{
+      sb.style.transition='transform .15s';
+      sb.style.transform='scale(.92)';
+      setTimeout(()=>sb.style.transform='',150);
+      doShuffle();
+    };
+    if(db2) db2.onclick=()=>{
+      // 버튼 눌림 효과
+      db2.style.transition='transform .1s';
+      db2.style.transform='scale(.9)';
+      db2.disabled=true;
+      setTimeout(()=>{db2.style.transform='';},100);
+      setTimeout(()=>{db2.disabled=false;},1500);
+      doDrawCard();
+    };
   },50);
   return sec;
 }
@@ -2164,6 +2358,40 @@ function playShuffleAnim(stack,cb){
   },540);
 }
 
+function playCardDrawAnim(card, onDone){
+  // 파티클 버스트
+  for(let i=0;i<16;i++){
+    const p=document.createElement('div');p.className='card-burst';
+    const a=Math.random()*Math.PI*2;
+    const d=60+Math.random()*120;
+    const hue=Math.random()<.6?(38+Math.random()*20):(240+Math.random()*50);
+    p.style.cssText=`--px:${Math.cos(a)*d}px;--py:${Math.sin(a)*d}px;
+      background:hsla(${hue},80%,75%,.9);
+      box-shadow:0 0 6px hsla(${hue},80%,80%,.5);
+      animation-delay:${Math.random()*.15}s;animation-duration:${.5+Math.random()*.4}s;`;
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),900);
+  }
+  // 카드 날아오는 효과
+  const fly=document.createElement('div');fly.className='card-fly';
+  fly.innerHTML=`<div class="card-fly-inner">
+    <img class="card-fly-img" src="${cardImg(card)}" onerror="this.style.display='none'">
+    <div class="card-fly-back">✦</div>
+    <div class="card-fly-shine"></div>
+  </div>`;
+  document.body.appendChild(fly);
+  // 화면 전체 플래시
+  const flash=document.createElement('div');
+  flash.style.cssText=`position:fixed;inset:0;z-index:299;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(201,168,76,.12) 0%,transparent 70%);
+    animation:cardGlow .6s ease forwards;`;
+  document.body.appendChild(flash);
+  setTimeout(()=>{
+    fly.style.transition='opacity .3s';fly.style.opacity='0';
+    setTimeout(()=>{fly.remove();flash.remove();if(onDone)onDone();},300);
+  },1100);
+}
+
 function doDrawCard(){
   resetActivityTimer();
   db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).once('value').then(snap=>{
@@ -2174,9 +2402,12 @@ function doDrawCard(){
     const avail=localDeck.filter(c=>!drawnIds.has(c.id));
     if(!avail.length){notify('덱이 비었어요. 셔플해주세요.');return;}
     const card=avail[0];
-    db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()}`).set({id:card.id,ts:Date.now()});
-    sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
-    if(drawn+1>=maxCards) sendSysMsg('✦ 카드 선택이 완료되었습니다!');
+    // 드라마틱 애니메이션 먼저
+    playCardDrawAnim(card,()=>{
+      db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()}`).set({id:card.id,ts:Date.now()});
+      sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
+      if(drawn+1>=maxCards) sendSysMsg('✦ 카드 선택이 완료되었습니다!');
+    });
   });
 }
 
@@ -2638,6 +2869,70 @@ document.addEventListener('click',function(e){
     setTimeout(()=>p.remove(),600);
   }
 });
+
+/* 마우스 글리터 */
+(function(){
+  const glitters=[];
+  document.addEventListener('mousemove',function(e){
+    if(Math.random()>.35) return;
+    const n=Math.floor(Math.random()*3)+1;
+    for(let i=0;i<n;i++){
+      const d=document.createElement('div');
+      const sz=2+Math.random()*4;
+      const hue=200+Math.random()*80;
+      const dx=(Math.random()-.5)*40;
+      const dy=(Math.random()-.5)*40;
+      d.style.cssText=`position:fixed;left:${e.clientX}px;top:${e.clientY}px;
+        width:${sz}px;height:${sz}px;border-radius:50%;pointer-events:none;z-index:9998;
+        background:hsla(${hue},80%,90%,.9);
+        box-shadow:0 0 ${sz*2}px hsla(${hue},80%,90%,.5);
+        transition:transform .8s ease-out,opacity .8s ease-out;`;
+      document.body.appendChild(d);
+      requestAnimationFrame(()=>{
+        d.style.transform=`translate(${dx}px,${dy}px) scale(.1)`;
+        d.style.opacity='0';
+      });
+      setTimeout(()=>d.remove(),800);
+    }
+  });
+})();
+
+/* TAROT 반짝임 */
+(function(){
+  function spawnTarotSparkle(){
+    const wrap=document.querySelector('.logo-wrap');
+    const logo=document.getElementById('logoTarot');
+    if(!wrap||!logo)return;
+    const lr=logo.getBoundingClientRect();
+    const wr=wrap.getBoundingClientRect();
+    // 로고 텍스트 영역 위에만 랜덤 배치
+    const x=lr.left-wr.left+Math.random()*lr.width;
+    const y=lr.top-wr.top+Math.random()*lr.height*.8-4;
+    const sz=2+Math.random()*3.5;
+    const d=document.createElement('div');
+    d.className='tarot-sparkle';
+    // 폰트와 같은 골드 계열 색상
+    const alpha=.25+Math.random()*.45;
+    const hue=38+Math.random()*18; // 골드 범위
+    const dur=.5+Math.random()*.7;
+    const sy=-(8+Math.random()*16);
+    d.style.cssText=`left:${x}px;top:${y}px;width:${sz}px;height:${sz}px;
+      background:hsla(${hue},85%,75%,${alpha});
+      box-shadow:0 0 ${sz*1.5}px hsla(${hue},85%,80%,${alpha*.6});
+      --sd:${dur}s;--sy:${sy}px;`;
+    wrap.appendChild(d);
+    setTimeout(()=>d.remove(),dur*1000);
+  }
+  // 불규칙한 간격으로 반짝임
+  function loop(){
+    if(document.querySelector('.logo-wrap')&&document.getElementById('logoTarot')){
+      const n=Math.floor(Math.random()*2)+1;
+      for(let i=0;i<n;i++) setTimeout(spawnTarotSparkle,i*120);
+    }
+    setTimeout(loop,300+Math.random()*700);
+  }
+  setTimeout(loop,800);
+})();
 window.addEventListener('DOMContentLoaded',init);
 </script>
 <style>
