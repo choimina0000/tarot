@@ -313,10 +313,14 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
 @media(max-width:660px){
-  .chat-col{display:none!important}
+  .chat-col{display:none}
+  .chat-col.mob-visible{display:flex!important;flex-direction:column;
+    position:fixed;top:50px;left:0;right:0;bottom:52px;
+    width:100%;min-width:0;z-index:25;border-left:none;}
   .mob-tabs{display:block}
-  .sess-body{padding-bottom:50px}
-  .notif{bottom:62px}
+  .sess-body{padding-bottom:52px}
+  .main-area.mob-hidden{display:none!important}
+  .notif{bottom:64px}
   .c-q{max-width:180px}
 }
 </style>
@@ -1562,18 +1566,27 @@ function listenTyping(){
 ═══════════════════════════════ */
 function switchTab(tab){
   activeTab=tab;
-  const main=$('mainArea'),chat=$('chatCol');
+  const main=$('mainArea');
+  const chat=$('chatCol');
+  if(!main||!chat) return;
+
   if(tab==='card'){
-    main.style.display='';
-    chat.style.cssText='display:none!important';
-    $('tabCard').classList.add('active');$('tabChat').classList.remove('active');
+    main.classList.remove('mob-hidden');
+    chat.classList.remove('mob-visible');
+    $('tabCard').classList.add('active');
+    $('tabChat').classList.remove('active');
   } else {
-    main.style.display='none';
-    chat.style.cssText='display:flex;flex-direction:column;width:100%;min-width:0;flex:1;position:absolute;top:50px;left:0;right:0;bottom:50px;';
-    $('tabChat').classList.add('active');$('tabCard').classList.remove('active');
+    main.classList.add('mob-hidden');
+    chat.classList.add('mob-visible');
+    $('tabChat').classList.add('active');
+    $('tabCard').classList.remove('active');
     $('tabChat').style.color='';
-    unreadChat=0;const badge=$('chatBadge');if(badge)badge.classList.add('hidden');
-    setTimeout(()=>{const b=$('chatMsgs');if(b)b.scrollTop=b.scrollHeight;},50);
+    unreadChat=0;
+    const badge=$('chatBadge');if(badge)badge.classList.add('hidden');
+    setTimeout(()=>{
+      const b=$('chatMsgs');
+      if(b) b.scrollTop=b.scrollHeight;
+    },80);
   }
 }
 
