@@ -469,8 +469,8 @@ const firebaseConfig = {
    PASSWORD (obfuscated)
 ═══════════════════════════════ */
 // Do not modify — verification key
-const _K = 'eGtqTjBJVFk=';
-function _ck(s){try{return s.length===6&&btoa([...btoa(s)].reverse().join(''))===_K;}catch(e){return false;}}
+const _K = 'a01DUWgwV1lrRldi';
+function _ck(s){try{return s.length===9&&btoa([...btoa(s)].reverse().join(''))===_K;}catch(e){return false;}}
 
 /* ═══════════════════════════════
    DECK + IMAGES
@@ -478,12 +478,13 @@ function _ck(s){try{return s.length===6&&btoa([...btoa(s)].reverse().join(''))==
 const IMG = 'https://www.sacred-texts.com/tarot/pkt/img/';
 const SICON = {major:'✦',wands:'🔥',cups:'💧',swords:'⚔',pentacles:'⭐'};
 
-// FIXED: correct URL for all cards including aces
 function cardImg(card) {
-  if (card.suit === 'major') return IMG + card.id + '.jpg';
-  const S = {wands:'wands',cups:'cups',swords:'swords',pentacles:'pents'}[card.suit];
-  const sfx = card.id.slice(-2);
-  return IMG + S + (sfx === '01' ? 'ac' : sfx) + '.jpg';
+  let id = card.id;
+  // 에이스는 sacred-texts에서 '01' 대신 'ac' 사용 (waac, cuac, swac, peac)
+  if (card.suit !== 'major' && id.slice(-2) === '01') {
+    id = id.slice(0, 2) + 'ac';
+  }
+  return IMG + id + '.jpg';
 }
 
 const DECK=[
@@ -1347,23 +1348,28 @@ function doSaveFile(){
 
 function saveSession(){ doSaveFile(); }
 
+function deleteSessionData(){
+  return db.ref(`${P}sessions/${roomId}`).remove().catch(()=>{});
+}
+
 function endSession(){
   if(myRole==='consultant'){
     if(!confirm('상담을 종료할까요?'))return;
-    // Ask about saving
-    const wantSave=confirm('상담 내역을 저장하시겠어요?');
+    const wantSave=confirm('상담 내역을 저장하시겠어요?\n\n확인: 저장 후 데이터 삭제\n취소: 저장 없이 바로 삭제');
     const finish=()=>{
       db.ref(`${P}sessions/${roomId}/status`).set('ended');
-      sendSysMsg('✦ 상담이 종료됐습니다');
-      // Expire the session link
-      db.ref(`${P}sessions/${roomId}/endedAt`).set(Date.now());
-      notify('상담이 종료됐어요');
-      setTimeout(()=>{hide('scrSession');show('scrRole');},1500);
+      sendSysMsg('✦ 상담이 종료됐습니다. 데이터가 안전하게 삭제됩니다.');
+      notify('상담 종료 — 데이터 삭제 중...');
+      setTimeout(()=>{
+        deleteSessionData().then(()=>{
+          notify('데이터가 완전히 삭제됐어요 ✦');
+          setTimeout(()=>{hide('scrSession');show('scrRole');},800);
+        });
+      },1500);
     };
     if(wantSave) doSaveFile().then(finish);
     else finish();
   } else {
-    // Client just exits, no save
     if(!confirm('상담을 나가시겠어요?'))return;
     hide('scrSession');show('scrRole');
   }
