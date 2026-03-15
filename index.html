@@ -42,7 +42,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 .completion-comment-lbl{font-size:9px;color:var(--gold3);letter-spacing:2px;margin-bottom:2px}
 
 .hidden{display:none!important}
-.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto;background:var(--bg)}
 
 /* CARD BOX */
 .card-box{background:var(--panel);border:1px solid var(--border2);border-radius:16px;padding:32px 28px;width:100%;max-width:420px}
@@ -389,7 +389,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 </div>
 
 <!-- ④ LOBBY -->
-<div id="scrLobby" class="screen hidden" style="justify-content:flex-start;padding-top:20px;padding-bottom:20px">
+<div id="scrLobby" class="screen hidden" style="justify-content:flex-start;padding-top:20px;padding-bottom:20px;background:var(--bg)">
   <div class="lobby-wrap">
     <div class="lobby-top">
       <div>
@@ -725,8 +725,17 @@ const _flipped=new Set();
 
 const P='tr4/';
 const $=id=>document.getElementById(id);
-const show=id=>$(id).classList.remove('hidden');
-const hide=id=>$(id).classList.add('hidden');
+const SCREENS=['scrRole','scrCSetup','scrKSetup','scrLobby','scrKWait','scrSession','scrExpired'];
+function showScreen(id){
+  SCREENS.forEach(s=>{
+    const el=$(s);
+    if(!el) return;
+    if(s===id) el.classList.remove('hidden');
+    else el.classList.add('hidden');
+  });
+}
+function show(id){const el=$(id);if(el)el.classList.remove('hidden');}
+function hide(id){const el=$(id);if(el)el.classList.add('hidden');}
 function notify(msg,dur=2600){
   const el=document.createElement('div');el.className='notif';el.textContent=msg;
   document.body.appendChild(el);setTimeout(()=>el.remove(),dur);}
@@ -775,7 +784,7 @@ function init(){
 function setupRoleButtons(){
   // ROLE BUTTONS
   $('roleConsultant').onclick=()=>show('pwOverlay');
-  $('roleClient').onclick=()=>{hide('scrRole');show('scrKSetup');setTimeout(()=>$('kNick').focus(),80);};
+  $('roleClient').onclick=()=>{showScreen('scrKSetup');setTimeout(()=>$('kNick').focus(),80);};
 
   // PASSWORD
   $('pwBtn').onclick=checkPw;
@@ -783,12 +792,12 @@ function setupRoleButtons(){
   $('pwCancel').onclick=()=>{hide('pwOverlay');$('pwInput').value='';hide('pwErr');};
 
   // CONSULTANT SETUP
-  $('cBackBtn').onclick=()=>{hide('scrCSetup');show('scrRole');};
+  $('cBackBtn').onclick=()=>{showScreen('scrRole');};
   $('cEnterBtn').onclick=enterLobby;
   $('cNick').addEventListener('keydown',e=>{if(e.key==='Enter')enterLobby();});
 
   // CLIENT SETUP
-  $('kBackBtn').onclick=()=>{hide('scrKSetup');show('scrRole');};
+  $('kBackBtn').onclick=()=>{showScreen('scrRole');};
   $('kEnterBtn').onclick=enterWaiting;
 }
 
@@ -797,7 +806,7 @@ function checkPw(){
   if(_ck(v)){
     hide('pwOverlay');hide('pwErr');
     $('pwInput').value='';
-    hide('scrRole');show('scrCSetup');
+    showScreen('scrCSetup');
     setTimeout(()=>$('cNick').focus(),80);
   } else {
     show('pwErr');
@@ -816,7 +825,7 @@ function enterLobby(){
   const nick=$('cNick').value.trim();
   if(!nick){notify('닉네임을 입력해주세요');return;}
   myNick=nick;myRole='consultant';
-  hide('scrCSetup');show('scrLobby');
+  showScreen('scrLobby');
   $('lobbyMyNick').textContent=nick;
 
   const ref=db.ref(`${P}lobby/consultants/${myKey}`);
@@ -847,7 +856,7 @@ function enterLobby(){
 
   $('lobbyOut').onclick=()=>{
     db.ref(`${P}lobby/consultants/${myKey}`).remove();
-    hide('scrLobby');show('scrRole');
+    showScreen('scrRole');
   };
 }
 
@@ -888,7 +897,7 @@ async function startWith(clientKey,clientData){
 
   db.ref(`${P}lobby/consultants/${myKey}`).remove();
   saveState('consultant',myNick,roomId);
-  hide('scrLobby');
+  showScreen('scrSession');
   enterSession();
 }
 
@@ -904,7 +913,7 @@ function enterWaiting(){
   if(!q){notify('질문을 입력해주세요');return;}
 
   myNick=nick;myRole='client';
-  hide('scrKSetup');show('scrKWait');
+  showScreen('scrKWait');
   $('waitPosText').textContent=nick+'님 · 대기 중';
 
   const ref=db.ref(`${P}lobby/waiting/${myKey}`);
@@ -918,7 +927,7 @@ function enterWaiting(){
       roomId=snap.val();
       saveState('client',myNick,roomId);
       stopWaitContent();
-      hide('scrKWait');
+      showScreen('scrSession');
       enterSession();
     }
   });
@@ -926,7 +935,7 @@ function enterWaiting(){
   $('waitCancelBtn').onclick=()=>{
     ref.remove();
     stopWaitContent();
-    hide('scrKWait');show('scrRole');
+    showScreen('scrRole');
   };
 }
 
@@ -979,7 +988,7 @@ function stopSessionTimer(){clearInterval(sessionTimerInterval);}
 function enterSession(){
   _flipped.clear();
   localDeck=rnd([...DECK]);drawnCount=0;
-  show('scrSession');
+  showScreen('scrSession');
   $('sDot').classList.remove('off');
   $('sInfo').textContent=(myRole==='consultant'?'상담사':'내담자')+' · '+myNick+' · Room '+roomId;
   if(myRole==='consultant') show('sAddQ');
@@ -1004,29 +1013,54 @@ function enterSession(){
   setupPresence();
 }
 
-/* ─ 접속 상태 추적 ─ */
+/* ─ 접속 상태 추적 (하트비트 방식 - 빠른 감지) ─ */
+let _hbInterval=null;
+
 function setupPresence(){
+  const presRef=db.ref(`${P}sessions/${roomId}/presence/client`);
+
   if(myRole==='client'){
-    // 내담자: 접속하면 true 기록, 창 닫히면 서버가 자동 삭제
-    const presRef=db.ref(`${P}sessions/${roomId}/presence/client`);
-    presRef.set(true);
-    presRef.onDisconnect().remove();
-    // 명시적으로 나가기 버튼 눌러도 삭제
-    window.addEventListener('beforeunload',()=>{presRef.remove();});
+    // 내담자: 3초마다 타임스탬프 전송 (하트비트)
+    function sendHb(){ presRef.set(Date.now()); }
+    sendHb();
+    _hbInterval=setInterval(sendHb,3000);
+    // 창 닫힐 때 즉시 0으로 (빠른 신호)
+    window.addEventListener('beforeunload',()=>{
+      clearInterval(_hbInterval);
+      presRef.set(0);
+    });
+    presRef.onDisconnect().set(0);
+
   } else {
-    // 상담사: 내담자 presence 값이 사라지면(null) 나간 것
-    let clientWasPresent=false;
-    db.ref(`${P}sessions/${roomId}/presence/client`).on('value',snap=>{
+    // 상담사: 5초마다 하트비트 값 체크
+    let lastSeen=null;
+    let alerted=false;
+
+    presRef.on('value',snap=>{
       const val=snap.val();
-      if(val===true){
-        clientWasPresent=true; // 내담자 접속 확인
-      } else if(val===null&&clientWasPresent){
-        // 있다가 사라짐 → 나간 것
-        sendSysMsg('⚠️ 내담자 '+myNick+'님이 대화방을 나갔습니다.');
-        notify('⚠️ 내담자가 나갔어요! 잠시 기다려주세요.',6000);
-        clientWasPresent=false;
+      if(!val||val===0){
+        // 즉시 0이 오면 바로 알림
+        if(lastSeen!==null&&!alerted){
+          alerted=true;
+          sendSysMsg('⚠️ 내담자가 대화방을 나갔습니다.');
+          notify('⚠️ 내담자가 나갔어요!',6000);
+        }
+      } else {
+        lastSeen=val;
+        alerted=false; // 재접속 시 초기화
       }
     });
+
+    // 5초마다 마지막 하트비트 확인 (앱 강제종료 등 대비)
+    setInterval(()=>{
+      if(lastSeen===null||alerted) return;
+      const gap=Date.now()-lastSeen;
+      if(gap>8000){ // 8초 이상 신호 없으면
+        alerted=true;
+        sendSysMsg('⚠️ 내담자가 대화방을 나갔습니다.');
+        notify('⚠️ 내담자가 나갔어요!',6000);
+      }
+    },5000);
   }
 }
 
@@ -1036,9 +1070,10 @@ function listenMeta(){
     if(snap.val()==='ended'&&myRole==='client'){
       clearState();
       notify('상담이 종료됐어요. 감사합니다 ✦',4000);
-      setTimeout(()=>{hide('scrSession');show('scrRole');},3500);
+      setTimeout(()=>{showScreen('scrRole');},3500);
     }
   });
+  let _roundTimer=null;
   db.ref(`${P}sessions/${roomId}/round`).on('value',snap=>{
     const r=snap.val()||0;
     if(r!==currentRound){
@@ -1046,7 +1081,8 @@ function listenMeta(){
       _flipped.clear();
       drawnCount=0;
       localDeck=rnd([...DECK]);
-      rebuildMainStructure();
+      clearTimeout(_roundTimer);
+      _roundTimer=setTimeout(()=>rebuildMainStructure(),150);
     }
   });
   db.ref(`${P}sessions/${roomId}/maxCards`).on('value',snap=>{maxCards=snap.val()||3;});
@@ -1066,12 +1102,16 @@ function listenMeta(){
 }
 
 /* ─ CARDS listener (only updates cards area, no full re-render) ─ */
+let _renderTimer=null;
 function listenCards(){
-  // 단일 리스너: 세션 전체 데이터 변경 시 전체 재렌더
   db.ref(`${P}sessions/${roomId}/rounds`).on('value',snap=>{
     const rounds=snap.val()||{};
-    renderAllRounds(rounds);
-    updatePinnedQFromRounds(rounds);
+    // 디바운스: 200ms 내 여러 번 호출되면 마지막 것만 실행
+    clearTimeout(_renderTimer);
+    _renderTimer=setTimeout(()=>{
+      renderAllRounds(rounds);
+      updatePinnedQFromRounds(rounds);
+    },200);
   });
 }
 
@@ -1211,9 +1251,11 @@ function buildCompletionView(cks,cards,roundNum){
 }
 
 function rebuildMainStructure(){
-  // 이제 renderAllRounds가 전부 담당 — 여기선 그냥 트리거만
+  // rounds 리스너가 이미 걸려있으므로 강제 1회 렌더만
+  clearTimeout(_renderTimer);
   db.ref(`${P}sessions/${roomId}/rounds`).once('value').then(snap=>{
     renderAllRounds(snap.val()||{});
+    updatePinnedQFromRounds(snap.val()||{});
   });
 }
 
@@ -1557,7 +1599,7 @@ function endSession(){
         deleteSessionData().then(()=>{
           clearState();
           notify('데이터가 완전히 삭제됐어요 ✦');
-          setTimeout(()=>{hide('scrSession');show('scrRole');},800);
+          setTimeout(()=>{showScreen('scrRole');},800);
         });
       },1500);
     };
@@ -1566,7 +1608,7 @@ function endSession(){
   } else {
     if(!confirm('상담을 나가시겠어요?'))return;
     clearState();
-    hide('scrSession');show('scrRole');
+    showScreen('scrRole');
   }
 }
 
