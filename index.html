@@ -1581,21 +1581,28 @@ function init(){
   setupRoleButtons();
 }
 
+let _roleButtonsSetup=false;
 function setupRoleButtons(){
-  // 로고 5번 클릭 → 관리자 비밀 진입
-  let _adminTap=0,_adminTimer=null;
-  const logoEl=$('logoTarot');
-  if(logoEl){
-    logoEl.addEventListener('click',()=>{
-      _adminTap++;
-      clearTimeout(_adminTimer);
-      _adminTimer=setTimeout(()=>{_adminTap=0;},2000);
-      if(_adminTap>=5){
-        _adminTap=0;
-        const pw=prompt('관리자 코드를 입력하세요');
-        if(pw!==null) _ack(pw).then(ok=>{if(ok)enterAdmin();else alert('코드가 틀렸습니다');});
-      }
-    });
+  // onclick은 덮어쓰므로 안전, addEventListener만 중복 방지
+  if(!_roleButtonsSetup){
+    _roleButtonsSetup=true;
+    // 로고 5번 클릭 → 관리자 비밀 진입
+    let _adminTap=0,_adminTimer=null;
+    const logoEl=$('logoTarot');
+    if(logoEl){
+      logoEl.addEventListener('click',()=>{
+        _adminTap++;
+        clearTimeout(_adminTimer);
+        _adminTimer=setTimeout(()=>{_adminTap=0;},2000);
+        if(_adminTap>=5){
+          _adminTap=0;
+          const pw=prompt('관리자 코드를 입력하세요');
+          if(pw!==null) _ack(pw).then(ok=>{if(ok)enterAdmin();else alert('코드가 틀렸습니다');});
+        }
+      });
+    }
+    $('pwInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPw();});
+    $('cNick').addEventListener('keydown',e=>{if(e.key==='Enter')enterLobby();});
   }
 
   // ROLE BUTTONS
@@ -1604,19 +1611,19 @@ function setupRoleButtons(){
 
   // PASSWORD
   $('pwBtn').onclick=checkPw;
-  $('pwInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPw();});
   $('pwCancel').onclick=()=>{hide('pwOverlay');$('pwInput').value='';hide('pwErr');};
 
   // CONSULTANT SETUP
   $('cBackBtn').onclick=()=>{showScreen('scrRole');};
   $('cEnterBtn').onclick=enterLobby;
-  $('cNick').addEventListener('keydown',e=>{if(e.key==='Enter')enterLobby();});
 
   // CLIENT SETUP
   $('kBackBtn').onclick=()=>{showScreen('scrRole');};
   $('kEnterBtn').onclick=enterWaiting;
 
-  // 실시간 접속 현황
+  // 실시간 접속 현황 (기존 리스너 정리 후 재등록)
+  db.ref(`${P}lobby/consultants`).off('value');
+  db.ref(`${P}lobby/waiting`).off('value');
   db.ref(`${P}lobby/consultants`).on('value',snap=>{
     const el=$('liveConsultants');
     if(el) el.textContent=Object.keys(snap.val()||{}).length;
@@ -1732,7 +1739,9 @@ function enterLobby(){
 
   $('lobbyOut').onclick=()=>{
     db.ref(`${P}lobby/consultants/${myKey}`).remove();
+    // 로비에서 off한 리스너 재등록
     showScreen('scrRole');
+    setupRoleButtons();
   };
 }
 
@@ -1844,8 +1853,10 @@ function enterWaiting(){
       if(d&&d.status==='waiting'){
         ref.remove();
         stopWaitContent();
+        db.ref(`${P}lobby/waiting/${myKey}/sessionId`).off();
         notify('⏰ 8분간 매칭되지 않아 대기가 자동 취소됐어요.',5000);
         showScreen('scrRole');
+        setupRoleButtons();
       }
     });
   },INACTIVE_MS);
@@ -1865,7 +1876,9 @@ function enterWaiting(){
     clearTimeout(_waitExpireTimer);
     ref.remove();
     stopWaitContent();
+    db.ref(`${P}lobby/waiting/${myKey}/sessionId`).off();
     showScreen('scrRole');
+    setupRoleButtons();
   };
 }
 
@@ -1964,10 +1977,6 @@ function resetActivityTimer(){
 }
 
 function autoEndSession(){
-  detachSessionListeners();
-  clearTimeout(_inactiveTimer);
-  clearTimeout(_warnTimer);
-  stopSessionTimer();
   sendSysMsg('⚠️ 3분간 활동이 없어 상담이 자동 종료됩니다.');
   notify('⏰ 비활성으로 자동 종료됩니다.',4000);
   db.ref(`${P}sessions/${roomId}/status`).set('ended');
@@ -1976,12 +1985,10 @@ function autoEndSession(){
   const wasNick=myNick;
   setTimeout(()=>{
     deleteSessionData().then(()=>{
-      clearState();
-      document.body.classList.remove('in-session');
+      cleanupSession();
       if(wasRole==='consultant'){
         notify('자동 종료됐어요. 대기실로 이동합니다.');
         setTimeout(()=>{
-          roomId='';currentRound=0;_flipped.clear();
           myRole='consultant';myNick=wasNick;
           showScreen('scrLobby');
           $('lobbyMyNick').textContent=wasNick;
@@ -1991,8 +1998,8 @@ function autoEndSession(){
       } else {
         notify('자동 종료됐어요. 처음 화면으로 이동합니다.');
         setTimeout(()=>{
-          roomId='';currentRound=0;_flipped.clear();
           showScreen('scrRole');
+          setupRoleButtons();
         },800);
       }
     });
@@ -2173,10 +2180,9 @@ function setupPresence(){
 function listenMeta(){
   db.ref(`${P}sessions/${roomId}/status`).on('value',snap=>{
     if(snap.val()==='ended'&&myRole==='client'){
-      clearState();
-      document.body.classList.remove('in-session');
+      cleanupSession();
       notify('상담이 종료됐어요. 감사합니다 ✦',4000);
-      setTimeout(()=>{showScreen('scrRole');},3500);
+      setTimeout(()=>{showScreen('scrRole');setupRoleButtons();},3500);
     }
   });
   let _roundTimer=null;
@@ -2341,6 +2347,7 @@ function buildCompletionView(cks,cards,roundNum){
     ci.appendChild(back);ci.appendChild(front);
     ccw.appendChild(numEl);ccw.appendChild(ci);
     ccw.onclick=()=>revealCard(card,cards[k],k,roundNum);
+    ccw.addEventListener('mouseenter',()=>revealCard(card,cards[k],k,roundNum));
     cwrap.appendChild(ccw);
 
     const lbl=document.createElement('div');lbl.className='completion-lbl';lbl.textContent=card.kr;
@@ -2494,6 +2501,7 @@ function makeCardEl(card,cardData,cardKey,roundNum,alreadyFlipped,cardNum){
   }
   const cw=document.createElement('div');cw.className='cw';
   cw.onclick=()=>revealCard(card,cardData,cardKey,roundNum);
+  cw.addEventListener('mouseenter',()=>revealCard(card,cardData,cardKey,roundNum));
   const ci=document.createElement('div');ci.className='ci'+(alreadyFlipped?' flipped':'');
   const back=document.createElement('div');back.className='cb';
   back.innerHTML='<div class="cbf"><div class="cbstar">✦</div></div>';
@@ -2532,6 +2540,8 @@ function makeCommentEditor(cardKey,existing){
 }
 
 function revealCard(card,cardData,cardKey,roundNum){
+  // 이미 열려있으면 무시
+  if(document.querySelector('.overlay')) return;
   const meaning=MEANINGS[card.id]||'';
   const comment=(cardData&&cardData.comment)||'';
   const ov=document.createElement('div');ov.className='overlay';
@@ -3078,11 +3088,8 @@ function deleteSessionData(){
   return db.ref(`${P}sessions/${roomId}`).remove().catch(()=>{});
 }
 
-function leaveSession(){
-  // 나가기 = 항상 상담 영향 없이 본인만 나가기 (종료는 종료 버튼으로)
-  if(!confirm('상담에서 나가시겠어요?\n상담은 계속 진행됩니다.'))return;
-  db.ref(`${P}sessions/${roomId}/consultants/${myKey}`).remove();
-  sendSysMsg(`✦ 상담사 ${myNick}님이 상담에서 나갔어요.`);
+// 세션 나갈 때 공통 정리
+function cleanupSession(){
   detachSessionListeners();
   stopSessionTimer();
   clearTimeout(_inactiveTimer);
@@ -3090,10 +3097,25 @@ function leaveSession(){
   clearState();
   document.body.classList.remove('in-session');
   _isJoined=false;
-  notify('상담에서 나왔어요. 대기실로 이동합니다.');
   roomId='';currentRound=0;_flipped.clear();
+  // 사운드 패널 상태 초기화 (햄버거 open 상태 제거)
+  const sh=document.getElementById('soundHamburger');
+  const sp=document.getElementById('soundPanels');
+  if(sh) sh.classList.remove('open');
+  if(sp) sp.classList.remove('open');
+}
+
+function leaveSession(){
+  if(!confirm('상담에서 나가시겠어요?\n상담은 계속 진행됩니다.'))return;
+  db.ref(`${P}sessions/${roomId}/consultants/${myKey}`).remove();
+  sendSysMsg(`✦ 상담사 ${myNick}님이 상담에서 나갔어요.`);
+  const wasNick=myNick;
+  cleanupSession();
+  notify('상담에서 나왔어요. 대기실로 이동합니다.');
+  myRole='consultant';myNick=wasNick;
   showScreen('scrLobby');
-  db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
+  $('lobbyMyNick').textContent=wasNick;
+  db.ref(`${P}lobby/consultants/${myKey}`).set({nick:wasNick,at:Date.now()});
   db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
 }
 
@@ -3102,26 +3124,20 @@ function endSession(){
     if(!confirm('상담을 종료할까요?'))return;
     const wantSave=confirm('상담 내역을 저장하시겠어요?\n\n확인: 저장 후 데이터 삭제\n취소: 저장 없이 바로 삭제');
     const finish=()=>{
-      detachSessionListeners();
-      stopSessionTimer();
-      clearTimeout(_inactiveTimer);
-      clearTimeout(_warnTimer);
+      sendSysMsg('✦ 상담이 종료됐습니다. 데이터가 안전하게 삭제됩니다.');
       db.ref(`${P}sessions/${roomId}/status`).set('ended');
       db.ref(`${P}sessions/${roomId}/endedAt`).set(Date.now());
-      sendSysMsg('✦ 상담이 종료됐습니다. 데이터가 안전하게 삭제됩니다.');
       notify('상담 종료 — 데이터 삭제 중...');
+      const wasNick=myNick;
       setTimeout(()=>{
         deleteSessionData().then(()=>{
-          clearState();
+          cleanupSession();
           notify('데이터가 삭제됐어요. 대기실로 이동합니다 ✦');
-          // 상담사는 대기실로 바로 복귀
           setTimeout(()=>{
-            roomId='';
-            currentRound=0;
-            _flipped.clear();
+            myRole='consultant';myNick=wasNick;
             showScreen('scrLobby');
-            // 대기실 리스너 재등록
-            db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
+            $('lobbyMyNick').textContent=wasNick;
+            db.ref(`${P}lobby/consultants/${myKey}`).set({nick:wasNick,at:Date.now()});
             db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
           },800);
         });
@@ -3131,12 +3147,14 @@ function endSession(){
     else finish();
   } else {
     if(!confirm('상담을 나가시겠어요?'))return;
-    // 명시적 퇴장 신호: 즉시 알림 트리거
     clearInterval(_hbInterval);
-    db.ref(`${P}sessions/${roomId}/presence/clientLeft`).set(true);
-    db.ref(`${P}sessions/${roomId}/presence/client`).set(0);
-    clearState();
-    setTimeout(()=>showScreen('scrRole'),300);
+    const _rid=roomId; // roomId 백업 (cleanup이 초기화하기 전에)
+    db.ref(`${P}sessions/${_rid}/presence/clientLeft`).set(true);
+    db.ref(`${P}sessions/${_rid}/presence/client`).set(0);
+    cleanupSession();
+    notify('상담에서 나왔어요.');
+    showScreen('scrRole');
+    setupRoleButtons();
   }
 }
 
@@ -3148,7 +3166,7 @@ const _adminOpen=new Set(); // 펼쳐진 세션 ID 기억
 
 function enterAdmin(){
   showScreen('scrAdmin');
-  $('adminOut').onclick=()=>{showScreen('scrRole');clearInterval(_adminInterval);};
+  $('adminOut').onclick=()=>{showScreen('scrRole');clearInterval(_adminInterval);setupRoleButtons();};
   loadAdminSessions();
   clearInterval(_adminInterval);
   _adminInterval=setInterval(loadAdminSessions,3000);
