@@ -3267,7 +3267,7 @@ function setSfxVol(v){
         const o=ambCtx.createOscillator();
         const g=ambCtx.createGain();
         o.type='sine'; o.frequency.value=f;
-        g.gain.value=.7;
+        g.gain.value=1.8;
         o.connect(g); g.connect(master);
         o.start(); nodes.push(o);
         // 느린 비브라토
@@ -3284,7 +3284,7 @@ function setSfxVol(v){
         const o=ambCtx.createOscillator();
         const g=ambCtx.createGain();
         o.type='sine'; o.frequency.value=f;
-        g.gain.value=.45;
+        g.gain.value=1.2;
         // 느린 트레몰로
         const lfo=ambCtx.createOscillator();
         const lfoG=ambCtx.createGain();
@@ -3301,12 +3301,12 @@ function setSfxVol(v){
         const o=ambCtx.createOscillator();
         const g=ambCtx.createGain();
         o.type='sine'; o.frequency.value=f;
-        g.gain.value=0;
+        g.gain.value=0.0;
         // 불규칙한 shimmer
         const lfo=ambCtx.createOscillator();
         const lfoG=ambCtx.createGain();
         lfo.frequency.value=.08+i*.03;
-        lfoG.gain.value=.04;
+        lfoG.gain.value=.12;
         lfo.connect(lfoG); lfoG.connect(g.gain);
         o.connect(g); g.connect(master);
         o.start(t+i*1.2); lfo.start(t+i*1.2);
@@ -3321,8 +3321,8 @@ function setSfxVol(v){
           const g=ambCtx.createGain();
           o.type='sine'; o.frequency.value=f;
           g.gain.setValueAtTime(0,startAt);
-          g.gain.linearRampToValueAtTime(amp*.12,startAt+3);
-          g.gain.setValueAtTime(amp*.12,startAt+5);
+          g.gain.linearRampToValueAtTime(amp*.55,startAt+3);
+          g.gain.setValueAtTime(amp*.55,startAt+5);
           g.gain.linearRampToValueAtTime(0,startAt+8);
           o.connect(g); g.connect(master);
           o.start(startAt); o.stop(startAt+8.5);
