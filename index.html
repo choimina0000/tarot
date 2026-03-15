@@ -848,6 +848,8 @@ const myKey=(()=>{let k=localStorage.getItem('t_uid');if(!k){k='u'+Date.now().to
 let myRole='',myNick='',roomId='',currentRound=0,localDeck=[],drawnCount=0,maxCards=3,prevShufTs=0,_isJoined=false;
 let _inactiveTimer=null,_lastActivity=0;
 const INACTIVE_MS=8*60*1000; // 8분
+let _sessionListeners=[]; // 세션 리스너 추적 (나갈 때 정리)
+let _waitingCache={},_sessionsCache={}; // 대기실 캐시
 let typingTimer=null,unreadChat=0,activeTab='card';
 
 // KEY FIX: track already-flipped cards to prevent re-animation on re-render
@@ -985,6 +987,10 @@ function enterLobby(){
   const nick=$('cNick').value.trim();
   if(!nick){notify('닉네임을 입력해주세요');return;}
   myNick=nick;myRole='consultant';
+  // 이전 로비 리스너 정리
+  db.ref(`${P}lobby/waiting`).off();
+  db.ref(`${P}lobby/consultants`).off();
+  db.ref(`${P}sessions`).off();
   showScreen('scrLobby');
   $('lobbyMyNick').textContent=nick;
 
@@ -1011,7 +1017,7 @@ function enterLobby(){
     });
   }
 
-  let _waitingCache={},_sessionsCache={};
+  _waitingCache={};_sessionsCache={}; // 초기화
   db.ref(`${P}lobby/waiting`).on('value',snap=>{
     _waitingCache=snap.val()||{};
     refreshLobby(_waitingCache,_sessionsCache);
@@ -1202,6 +1208,30 @@ function startSessionTimer(){
 }
 function stopSessionTimer(){clearInterval(sessionTimerInterval);}
 
+function detachSessionListeners(){
+  // 등록된 모든 세션 리스너 해제
+  _sessionListeners.forEach(({ref,handler})=>{
+    try{ ref.off('value',handler); }catch(e){}
+  });
+  _sessionListeners=[];
+  // 세션 경로 전체 off (혹시 누락된 것 대비)
+  if(roomId){
+    db.ref(`${P}sessions/${roomId}`).off();
+    db.ref(`${P}sessions/${roomId}/status`).off();
+    db.ref(`${P}sessions/${roomId}/round`).off();
+    db.ref(`${P}sessions/${roomId}/rounds`).off();
+    db.ref(`${P}sessions/${roomId}/chat`).off();
+    db.ref(`${P}sessions/${roomId}/typing`).off();
+    db.ref(`${P}sessions/${roomId}/shuffleTs`).off();
+    db.ref(`${P}sessions/${roomId}/maxCards`).off();
+    db.ref(`${P}sessions/${roomId}/presence`).off();
+    db.ref(`${P}sessions/${roomId}/presence/client`).off();
+    db.ref(`${P}sessions/${roomId}/presence/clientLeft`).off();
+    db.ref(`${P}sessions/${roomId}/presence/leftAlert`).off();
+    db.ref(`${P}sessions/${roomId}/consultants`).off();
+  }
+}
+
 let _warnTimer=null;
 function resetActivityTimer(){
   _lastActivity=Date.now();
@@ -1224,6 +1254,7 @@ function resetActivityTimer(){
 }
 
 function autoEndSession(){
+  detachSessionListeners();
   clearTimeout(_inactiveTimer);
   stopSessionTimer();
   sendSysMsg('⚠️ 8분간 활동이 없어 상담이 자동 종료됩니다.');
@@ -1266,7 +1297,7 @@ function enterSession(){
     show('waitPanel');
     setupWaitPanel();
   }
-  if(_isJoined){show('sLeave');}else{hide('sLeave');}
+  if(myRole==='consultant') show('sLeave'); // 상담사면 항상 나가기 버튼 표시
 
   startSessionTimer();
   resetActivityTimer();
@@ -1817,7 +1848,18 @@ function _getConsultantColorIdx(key){
 
 function listenChat(){
   db.ref(`${P}sessions/${roomId}/chat`).on('value',snap=>{
-    const msgs=Object.values(snap.val()||{}).sort((a,b)=>a.ts-b.ts);
+    const raw=snap.val()||{};
+    // Firebase push key는 시간순 생성 → 키 정렬이 가장 신뢰할 수 있는 순서
+    // ts는 클라이언트 시간이라 살짝 오차 가능 → 키를 1순위로
+    const msgs=Object.entries(raw)
+      .sort(([ka,a],[kb,b])=>{
+        // 1순위: push key 사전순 (Firebase가 시간순으로 생성)
+        if(ka<kb) return -1;
+        if(ka>kb) return 1;
+        // 2순위: ts
+        return (a.ts||0)-(b.ts||0);
+      })
+      .map(([,m])=>m);
     const box=$('chatMsgs');box.innerHTML='';
     msgs.forEach(m=>{
       const el=document.createElement('div');
@@ -1946,7 +1988,9 @@ function doSaveFile(){
   return db.ref(`${P}sessions/${roomId}`).once('value').then(snap=>{
     const d=snap.val()||{};
     const rounds=d.rounds||{};
-    const msgs=Object.values(d.chat||{}).sort((a,b)=>a.ts-b.ts);
+    const msgs=Object.entries(d.chat||{})
+      .sort(([ka,a],[kb,b])=>{if(ka<kb)return -1;if(ka>kb)return 1;return(a.ts||0)-(b.ts||0);})
+      .map(([,m])=>m);
     let txt=`✦ LAKE TAROT 상담 기록\n날짜: ${new Date().toLocaleString('ko-KR')}\nRoom: ${roomId}\n상담사: ${d.consultantNick||''}\n내담자: ${(d.client||{}).nick||''}\n\n`;
     Object.keys(rounds).sort().forEach(ri=>{
       const r=rounds[ri];
@@ -1976,21 +2020,52 @@ function deleteSessionData(){
 }
 
 function leaveSession(){
-  if(!confirm('이 상담에서 나가시겠어요?\n상담은 계속 진행됩니다.'))return;
-  // 상담사 목록에서 나만 제거
-  db.ref(`${P}sessions/${roomId}/consultants/${myKey}`).remove();
-  sendSysMsg(`✦ 상담사 ${myNick}님이 상담에서 나갔어요.`);
+  if(_isJoined){
+    // 난입한 경우 — 상담 영향 없이 나가기
+    if(!confirm('이 상담에서 나가시겠어요?\n상담은 계속 진행됩니다.'))return;
+    db.ref(`${P}sessions/${roomId}/consultants/${myKey}`).remove();
+    sendSysMsg(`✦ 상담사 ${myNick}님이 상담에서 나갔어요.`);
+  } else {
+    // 원래 상담사 — 나가면 상담 종료 경고
+    if(!confirm('상담에서 나가시겠어요?\n나가면 상담이 종료됩니다.'))return;
+    // 상담 종료 처리
+    const wantSave=confirm('상담 내역을 저장하시겠어요?');
+    const doLeave=()=>{
+      stopSessionTimer();
+      clearTimeout(_inactiveTimer);
+      clearTimeout(_warnTimer);
+      db.ref(`${P}sessions/${roomId}/status`).set('ended');
+      db.ref(`${P}sessions/${roomId}/endedAt`).set(Date.now());
+      sendSysMsg('✦ 상담이 종료됐습니다. 데이터가 안전하게 삭제됩니다.');
+      notify('상담 종료 — 데이터 삭제 중...');
+      setTimeout(()=>{
+        deleteSessionData().then(()=>{
+          clearState();
+          notify('대기실로 이동합니다 ✦');
+          setTimeout(()=>{
+            roomId='';currentRound=0;_flipped.clear();
+            showScreen('scrLobby');
+            db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
+            db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
+          },800);
+        });
+      },1500);
+    };
+    if(wantSave) doSaveFile().then(doLeave);
+    else doLeave();
+    return;
+  }
+  detachSessionListeners();
   stopSessionTimer();
-  // 대기실로 복귀
+  clearTimeout(_inactiveTimer);
+  clearTimeout(_warnTimer);
   clearState();
   _isJoined=false;
   notify('상담에서 나왔어요. 대기실로 이동합니다.');
-  setTimeout(()=>{
-    roomId='';currentRound=0;_flipped.clear();
-    showScreen('scrLobby');
-    db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
-    db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
-  },500);
+  roomId='';currentRound=0;_flipped.clear();
+  showScreen('scrLobby');
+  db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
+  db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
 }
 
 function endSession(){
@@ -1998,6 +2073,7 @@ function endSession(){
     if(!confirm('상담을 종료할까요?'))return;
     const wantSave=confirm('상담 내역을 저장하시겠어요?\n\n확인: 저장 후 데이터 삭제\n취소: 저장 없이 바로 삭제');
     const finish=()=>{
+      detachSessionListeners();
       stopSessionTimer();
       clearTimeout(_inactiveTimer);
       clearTimeout(_warnTimer);
@@ -2133,7 +2209,9 @@ function makeAdminSession(rid,s){
   });
 
   // 채팅 전체
-  const msgs=Object.values(s.chat||{}).sort((a,b)=>a.ts-b.ts);
+  const msgs=Object.entries(s.chat||{})
+    .sort(([ka,a],[kb,b])=>{if(ka<kb)return -1;if(ka>kb)return 1;return(a.ts||0)-(b.ts||0);})
+    .map(([,m])=>m);
   if(msgs.length){
     const chatSec=document.createElement('div');
     chatSec.style.cssText='border-top:1px solid var(--border);padding-top:10px;margin-top:8px';
@@ -2208,6 +2286,6 @@ function loadAdminSessions(){
 
 window.addEventListener('DOMContentLoaded',init);
 </script>
-<div style="position:fixed;bottom:12px;right:16px;z-index:1;font-size:10px;color:var(--text3);letter-spacing:1px;font-family:'Cormorant Garamond',serif;pointer-events:none">made by choimina</div>
+<div style="position:fixed;bottom:14px;right:18px;z-index:999;font-size:12px;color:var(--gold3);letter-spacing:2px;font-family:'Cormorant Garamond',serif;font-style:italic;pointer-events:none;text-shadow:0 0 12px rgba(201,168,76,.3)">made by choimina</div>
 </body>
 </html>
