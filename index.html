@@ -19,6 +19,28 @@
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
 #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+/* 카드 완료 화면 */
+.completion-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px 0}
+.completion-title{font-family:'Cinzel',serif;font-size:16px;color:var(--gold2);letter-spacing:3px;text-align:center}
+.completion-cards{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;align-items:flex-start}
+.completion-card-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
+.completion-cw{position:relative;width:150px;height:256px;perspective:800px;cursor:pointer}
+.completion-cw .ci{width:100%;height:100%;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.4,0,.2,1)}
+.completion-cw .ci.flipped{transform:rotateY(180deg)}
+.completion-cw .cf,.completion-cw .cb{position:absolute;inset:0;border-radius:10px;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--border2);}
+.completion-cw .cf{transform:rotateY(180deg)}
+.completion-cw .cf img{width:100%;height:100%;object-fit:cover;display:block}
+.completion-cw .cb .cbf{border-radius:9px}
+.completion-num{position:absolute;top:-8px;left:-8px;width:24px;height:24px;border-radius:50%;
+  background:var(--gold);color:#05050e;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;z-index:5;
+  box-shadow:0 2px 8px rgba(0,0,0,.5);}
+.completion-lbl{font-family:'Cormorant Garamond',serif;font-size:13px;color:var(--text2);text-align:center;max-width:150px}
+.completion-comment{margin-top:4px;background:rgba(201,168,76,.1);border:1px solid var(--gold3);
+  border-radius:6px;padding:7px 10px;font-size:12px;color:var(--gold2);line-height:1.5;
+  max-width:150px;word-break:break-all;font-style:italic}
+.completion-comment-lbl{font-size:9px;color:var(--gold3);letter-spacing:2px;margin-bottom:2px}
+
 .hidden{display:none!important}
 .screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
 
@@ -1044,9 +1066,22 @@ function rebuildMainStructure(){
   } else {
     curSec.innerHTML=`<div class="sec-lbl" id="cur-lbl">ROUND ${currentRound+1}</div>`;
     const qSec=document.createElement('div');qSec.id='q-sec-wrap';
-    // 클라이언트: 라운드 시작 시 질문입력창 즉시 표시 (Firebase 이벤트 기다리지 않음)
-    qSec.appendChild(buildQInput(currentRound>0));
     curSec.appendChild(qSec);
+    // 현재 라운드 질문 상태 확인 후 적절한 UI 표시
+    db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/question`).once('value').then(snap=>{
+      const q=snap.val()||'';
+      const w=$('q-sec-wrap');if(!w)return;
+      if(!q){
+        w.innerHTML='';
+        w.appendChild(buildQInput(currentRound>0));
+      } else {
+        // 이미 질문 있으면 덱 표시
+        const cs=$('cur-sec');const da=$(`da-${currentRound}`);
+        if(cs&&da&&!document.querySelector('#cur-sec .deck-sec')){
+          cs.insertBefore(buildDeckUI(true),da);
+        }
+      }
+    });
   }
   const da=document.createElement('div');da.className='drawn-area';da.id=`da-${currentRound}`;
   curSec.appendChild(da);
@@ -1058,48 +1093,64 @@ function updateCardsAreas(rounds){
   Object.keys(rounds).forEach(ri=>{
     const n=Number(ri);
     const rdata=rounds[ri]||{};
-    // Update question label for past rounds
     const qEl=$(`rbq-${n}`);
     if(qEl&&rdata.question) qEl.textContent=rdata.question;
+    if(n===currentRound) updateCurrentQSection(rdata);
 
-    // Update current round Q section
-    if(n===currentRound){
-      updateCurrentQSection(rdata);
-    }
-
-    // Update cards area
     const area=$(`da-${n}`);
     if(!area) return;
     const cards=rdata.cards||{};
     const cks=Object.keys(cards).sort((a,b)=>cards[a].ts-cards[b].ts);
+    const isCurrent=(n===currentRound);
+    const isComplete=isCurrent&&cks.length>=maxCards&&myRole==='client';
+
+    // 완료 화면이 이미 있으면 코멘트만 업데이트
+    if(area.querySelector('.completion-wrap')){
+      cks.forEach((k,i)=>{
+        const cbox=area.querySelector(`.comp-comment-${k}`);
+        if(cards[k].comment){
+          if(cbox){cbox.querySelector('div:last-child').textContent=cards[k].comment;}
+          else{
+            const cwrap=area.querySelector(`[data-comp-ck="${k}"]`);
+            if(cwrap){
+              const cb=document.createElement('div');cb.className=`completion-comment comp-comment-${k}`;
+              const lbl2=document.createElement('div');lbl2.className='completion-comment-lbl';lbl2.textContent='상담사 코멘트';
+              const txt2=document.createElement('div');txt2.textContent=cards[k].comment;
+              cb.appendChild(lbl2);cb.appendChild(txt2);cwrap.appendChild(cb);
+            }
+          }
+        }
+      });
+      return;
+    }
+
+    // 일반 카드 렌더
     cks.forEach((k,i)=>{
-      if(area.querySelector(`[data-ck="${k}"]`)) return; // already rendered
+      if(area.querySelector(`[data-ck="${k}"]`)) return;
       const card=DECK.find(d=>d.id===cards[k].id);if(!card)return;
       const flipKey=`${n}_${k}`;
       const already=n<currentRound||_flipped.has(flipKey);
       const wrap=makeCardEl(card,cards[k],k,n,already,i+1);
       wrap.dataset.ck=k;
       area.appendChild(wrap);
-      if(n===currentRound&&myRole==='consultant'){
+      if(isCurrent&&myRole==='consultant'){
         const ce=makeCommentEditor(k,cards[k].comment||'');ce.dataset.ck=k;
         area.appendChild(ce);
       }
-      // Update empty message
       area.querySelectorAll('.empty-msg').forEach(e=>e.remove());
-
       if(!already){
         const ci=wrap.querySelector('.ci');
         if(ci) setTimeout(()=>{ci.classList.add('flipped');_flipped.add(flipKey);},80+i*70);
       }
     });
 
-    // Update comment boxes
+    // 코멘트 업데이트 (일반 뷰, 상담사+내담자 둘 다)
     cks.forEach(k=>{
       const wrap=area.querySelector(`[data-ck="${k}"]`);
       if(!wrap) return;
       const existing=wrap.querySelector('.dc-comment-box');
       if(cards[k].comment){
-        if(existing){existing.querySelector('div:last-child').textContent=cards[k].comment;}
+        if(existing){existing.querySelector('.dc-comment-box > div:last-child').textContent=cards[k].comment;}
         else{
           const cb=document.createElement('div');cb.className='dc-comment-box';
           const lbl2=document.createElement('div');lbl2.className='dc-comment-lbl';lbl2.textContent='상담사 코멘트';
@@ -1108,30 +1159,92 @@ function updateCardsAreas(rounds){
         }
       } else if(existing){existing.remove();}
     });
+
+    // 내담자 전체 완료 → 완료 화면으로 전환
+    if(isComplete&&cks.length===maxCards){
+      showCompletionScreen(area,cks,cards,n);
+    }
   });
 }
 
+function showCompletionScreen(area,cks,cards,roundNum){
+  // 기존 일반 카드 DOM 제거, deck 숨김
+  area.innerHTML='';
+  const deckSec=$('deckSec');if(deckSec)deckSec.remove();
+  // cur-sec 안의 deck-sec 제거
+  document.querySelectorAll('#cur-sec .deck-sec').forEach(e=>e.remove());
+
+  notify('✦ 카드 선택이 완료되었습니다!',4000);
+
+  const wrap=document.createElement('div');wrap.className='completion-wrap';
+  const title=document.createElement('div');title.className='completion-title';
+  title.textContent='✦ 카드 선택 완료';
+  wrap.appendChild(title);
+
+  const cardsRow=document.createElement('div');cardsRow.className='completion-cards';
+  cks.forEach((k,i)=>{
+    const card=DECK.find(d=>d.id===cards[k].id);if(!card)return;
+    const cwrap=document.createElement('div');cwrap.className='completion-card-wrap';
+    cwrap.dataset.compCk=k;
+
+    // 번호 + 카드
+    const ccw=document.createElement('div');ccw.className='completion-cw';ccw.style.position='relative';
+    const numEl=document.createElement('div');numEl.className='completion-num';numEl.textContent=i+1;
+
+    const ci=document.createElement('div');ci.className='ci';
+    const back=document.createElement('div');back.className='cb';
+    back.innerHTML='<div class="cbf"><div class="cbstar">✦</div></div>';
+    const front=document.createElement('div');front.className='cf';
+    front.innerHTML=`<img src="${cardImg(card)}" onerror="this.style.display='none';this.nextSibling.style.display='flex'">
+      <div class="cf-fb" style="display:none">
+        <div class="cs">${SICON[card.suit]||'✦'}</div>
+        <div class="cn">${esc(card.name)}</div><div class="ck">${esc(card.kr)}</div>
+      </div>`;
+    ci.appendChild(back);ci.appendChild(front);
+    ccw.appendChild(numEl);ccw.appendChild(ci);
+    ccw.onclick=()=>revealCard(card,cards[k],k,roundNum);
+    cwrap.appendChild(ccw);
+
+    const lbl=document.createElement('div');lbl.className='completion-lbl';lbl.textContent=card.kr;cwrap.appendChild(lbl);
+
+    if(cards[k].comment){
+      const cb=document.createElement('div');cb.className=`completion-comment comp-comment-${k}`;
+      const lbl2=document.createElement('div');lbl2.className='completion-comment-lbl';lbl2.textContent='상담사 코멘트';
+      const txt2=document.createElement('div');txt2.textContent=cards[k].comment;
+      cb.appendChild(lbl2);cb.appendChild(txt2);cwrap.appendChild(cb);
+    }
+
+    cardsRow.appendChild(cwrap);
+    setTimeout(()=>ci.classList.add('flipped'),100+i*120);
+  });
+  wrap.appendChild(cardsRow);
+  area.appendChild(wrap);
+}
+
 function updateCurrentQSection(rdata){
-  if(myRole==='client'){
-    const wrap=$('q-sec-wrap');if(!wrap) return;
-    const q=rdata.question||'';
-    const deckExists=!!$('deckStack');
-    if(!q){
-      if(!wrap.querySelector('#qTA')){
-        wrap.innerHTML='';wrap.appendChild(buildQInput(currentRound>0));
+  if(myRole!=='client') return;
+  const wrap=$('q-sec-wrap');if(!wrap) return;
+  const q=rdata.question||'';
+
+  if(!q){
+    // 질문 아직 없음 → 입력창 보여줘야 함
+    if(!wrap.querySelector('.q-sec')){
+      wrap.innerHTML='';
+      wrap.appendChild(buildQInput(currentRound>0));
+    }
+    // 덱이 있으면 제거 (질문 먼저)
+    const ds=document.querySelector('#cur-sec .deck-sec');if(ds)ds.remove();
+  } else {
+    // 질문 확정됨 → 입력창 제거, 덱 표시
+    wrap.innerHTML='';
+    const deckExists=!!document.querySelector('#cur-sec .deck-sec');
+    if(!deckExists){
+      const curSec=$('cur-sec');
+      const da=$(`da-${currentRound}`);
+      if(curSec&&da){
+        const deckUI=buildDeckUI(true);
+        curSec.insertBefore(deckUI,da);
       }
-      if(deckExists) $('deckStack').closest('.deck-sec')?.remove();
-    } else {
-      if(!deckExists){
-        wrap.innerHTML='';
-        const curSec=$('cur-sec');
-        if(curSec){
-          const deckUI=buildDeckUI(true);
-          const da=$(`da-${currentRound}`);
-          curSec.insertBefore(deckUI,da);
-        }
-      }
-      if(wrap.querySelector('#qTA')) wrap.innerHTML='';
     }
   }
 }
@@ -1158,7 +1271,7 @@ function buildQInput(isAdd){
   sec.innerHTML=`
     <div class="q-title">${isAdd?`✦ 추가 질문 — Round ${currentRound+1}`:'✦ 오늘의 질문'}</div>
     <div class="q-desc">${isAdd?'상담사가 추가 질문을 요청했어요.<br>새 질문을 적어주세요.':'마음속에 있는 고민이나 궁금한 것을 적어주세요.'}</div>
-    <div class="field"><textarea id="qTA" placeholder="질문을 입력하세요..." style="height:75px;width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:10px 13px;color:var(--text);font-family:Noto Sans KR,sans-serif;font-size:13px;resize:none;line-height:1.6"></textarea></div>
+    <div class="field"><textarea id="qTA" placeholder="질문을 입력하세요..." style="height:80px;width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:11px 14px;color:var(--text);font-family:Noto Sans KR,sans-serif;font-size:14px;resize:none;line-height:1.6"></textarea></div>
     <button class="btn btn-gold" id="qBtn" style="max-width:240px;margin:0 auto">질문 확정 →</button>`;
   setTimeout(()=>{
     const btn=$('qBtn'),ta=$('qTA');
@@ -1266,14 +1379,17 @@ function doShuffle(){
   const sb=$('shufBtn'),db2=$('drawBtn');
   if(sb)sb.disabled=true;if(db2)db2.disabled=true;
   db.ref(`${P}sessions/${roomId}/shuffleTs`).set(Date.now());
-  playShuffleAnim($('deckStack'),()=>{
-    localDeck=rnd([...DECK]);drawnCount=0;
-    _flipped.forEach((k,_)=>{if(k.startsWith(`${currentRound}_`))_flipped.delete(k);});
-    db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).remove();
-    const area=$(`da-${currentRound}`);if(area)area.innerHTML='';
-    if(sb)sb.disabled=false;if(db2)db2.disabled=false;
-    const dc=$('drawCount');if(dc)dc.textContent=`0/${maxCards}장`;
-    notify('셔플 완료 ✦');
+  // 현재 뽑힌 카드 수 확인 (셔플 후 이어서 뽑기 위해)
+  db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).once('value').then(snap=>{
+    const alreadyDrawn=Object.keys(snap.val()||{}).length;
+    playShuffleAnim($('deckStack'),()=>{
+      // 로컬 덱만 리셋 (Firebase 카드 데이터는 유지)
+      localDeck=rnd([...DECK]);
+      drawnCount=alreadyDrawn; // 이미 뽑은 수 유지
+      if(sb)sb.disabled=false;if(db2)db2.disabled=false;
+      const dc=$('drawCount');if(dc)dc.textContent=`${alreadyDrawn}/${maxCards}장`;
+      notify('셔플 완료 ✦ 계속 뽑을 수 있어요');
+    });
   });
 }
 
@@ -1298,12 +1414,17 @@ function playShuffleAnim(stack,cb){
 function doDrawCard(){
   db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).once('value').then(snap=>{
     const drawn=Object.keys(snap.val()||{}).length;
-    if(drawn>=maxCards){notify(`최대 ${maxCards}장까지만 뽑을 수 있어요`);return;}
-    const card=localDeck[drawn];
-    if(!card){notify('덱이 비었어요. 셔플해주세요.');return;}
+    if(drawn>=maxCards){notify(`이미 ${maxCards}장을 모두 뽑았어요`);return;}
+    // localDeck에서 아직 안뽑은 카드 선택 (이미 Firebase에 있는 카드 제외)
+    const drawnIds=new Set(Object.values(snap.val()||{}).map(c=>c.id));
+    const avail=localDeck.filter(c=>!drawnIds.has(c.id));
+    if(!avail.length){notify('덱이 비었어요. 셔플해주세요.');return;}
+    const card=avail[0];
     db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()}`).set({id:card.id,ts:Date.now()});
     sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
-    const dc=$('drawCount');if(dc)dc.textContent=`${drawn+1}/${maxCards}장`;
+    const next=drawn+1;
+    const dc=$('drawCount');if(dc)dc.textContent=`${next}/${maxCards}장`;
+    if(next>=maxCards) sendSysMsg('✦ 카드 선택이 완료되었습니다!');
   });
 }
 
