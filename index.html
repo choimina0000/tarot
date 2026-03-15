@@ -104,6 +104,61 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 .discord-icon:hover{transform:scale(1.1);box-shadow:0 4px 24px rgba(88,101,242,.7)}
 .discord-icon svg{width:24px;height:24px;fill:#fff}
 
+/* ── 카드 드로우 애니메이션 ── */
+@keyframes goldReveal{
+  0%{transform:translate(-50%,-50%) scale(.3) rotateY(-90deg);opacity:0;filter:brightness(3) saturate(0);}
+  30%{transform:translate(-50%,-50%) scale(1.1) rotateY(-18deg);opacity:1;filter:brightness(2.2);}
+  65%{transform:translate(-50%,-50%) scale(1.04) rotateY(6deg);filter:brightness(1.5);}
+  85%{transform:translate(-50%,-50%) scale(1.01) rotateY(-2deg);filter:brightness(1.15);}
+  100%{transform:translate(-50%,-50%) scale(1) rotateY(0deg);opacity:1;filter:brightness(1);}
+}
+@keyframes goldRingExpand{
+  0%{transform:translate(-50%,-50%) scale(.1);opacity:.9;}
+  100%{transform:translate(-50%,-50%) scale(4);opacity:0;}
+}
+@keyframes goldRayRotate{
+  0%{transform:translate(-50%,-50%) rotate(0deg);opacity:.6;}
+  100%{transform:translate(-50%,-50%) rotate(200deg);opacity:0;}
+}
+@keyframes cardShineSlide{
+  0%{opacity:0;transform:translateX(-160%);}
+  50%{opacity:.65;}
+  100%{opacity:0;transform:translateX(220%);}
+}
+@keyframes particleBurst{
+  0%{transform:translate(-50%,-50%) translate(0,0) scale(1);opacity:1;}
+  100%{transform:translate(-50%,-50%) translate(var(--px),var(--py)) scale(0);opacity:0;}
+}
+.card-fly{position:fixed;left:50%;top:50%;z-index:310;
+  width:var(--cw);height:var(--ch);border-radius:10px;overflow:hidden;
+  pointer-events:none;
+  animation:goldReveal .8s cubic-bezier(.25,.46,.45,.94) forwards;
+  box-shadow:0 0 40px rgba(201,168,76,.5),0 0 80px rgba(201,168,76,.25);}
+.card-fly img{width:100%;height:100%;object-fit:cover;display:block;}
+.card-fly-shine{position:absolute;top:0;left:0;bottom:0;width:55%;
+  background:linear-gradient(105deg,transparent 25%,rgba(255,240,160,.7) 50%,transparent 75%);
+  animation:cardShineSlide .5s ease .3s forwards;opacity:0;}
+.card-gold-ring{position:fixed;left:50%;top:50%;z-index:309;pointer-events:none;
+  width:calc(var(--cw)*1.6);height:calc(var(--cw)*1.6);border-radius:50%;
+  border:1.5px solid rgba(201,168,76,.8);
+  animation:goldRingExpand .9s ease-out forwards;}
+.card-gold-ring2{position:fixed;left:50%;top:50%;z-index:309;pointer-events:none;
+  width:calc(var(--cw)*1.6);height:calc(var(--cw)*1.6);border-radius:50%;
+  border:1px solid rgba(255,215,80,.5);
+  animation:goldRingExpand .9s ease-out .15s forwards;opacity:0;}
+.card-gold-rays{position:fixed;left:50%;top:50%;z-index:308;pointer-events:none;
+  width:280px;height:280px;border-radius:50%;
+  background:conic-gradient(
+    rgba(201,168,76,.12) 0deg,transparent 25deg,rgba(201,168,76,.08) 50deg,transparent 75deg,
+    rgba(201,168,76,.12) 100deg,transparent 125deg,rgba(201,168,76,.08) 150deg,transparent 175deg,
+    rgba(201,168,76,.12) 200deg,transparent 225deg,rgba(201,168,76,.08) 250deg,transparent 275deg,
+    rgba(201,168,76,.12) 300deg,transparent 325deg,rgba(201,168,76,.08) 350deg,transparent 360deg
+  );
+  animation:goldRayRotate .9s ease-out forwards;}
+.card-burst{position:fixed;left:50%;top:50%;
+  width:5px;height:5px;border-radius:50%;pointer-events:none;z-index:311;
+  animation:particleBurst .6s ease-out var(--delay,.0s) forwards;}
+
 /* ── 카드 개수 선택 ── */
 .card-count-sec{background:rgba(201,168,76,.06);border:1px solid var(--gold3);border-radius:12px;
   padding:16px 20px;margin-bottom:14px;text-align:center}
@@ -2246,6 +2301,7 @@ function buildDeckUI(interactive,alreadyDrawn){
       sb.style.transition='transform .15s';
       sb.style.transform='scale(.92)';
       setTimeout(()=>sb.style.transform='',150);
+      if(window.playShuffleSound) playShuffleSound();
       doShuffle();
     };
     if(db2) db2.onclick=()=>{
@@ -2359,37 +2415,54 @@ function playShuffleAnim(stack,cb){
 }
 
 function playCardDrawAnim(card, onDone){
-  // 파티클 버스트
-  for(let i=0;i<16;i++){
+  // 카드 뽑기 화면에서만 연출 (질문 입력 중이면 스킵)
+  const qVisible=document.querySelector('#qTA');
+  if(qVisible){if(onDone)onDone();return;}
+  // 사운드: 황금빛 울림
+  playCardDrawSound();
+
+  // 1. 황금 방사선 원
+  const rays=document.createElement('div');rays.className='card-gold-rays';
+  document.body.appendChild(rays);
+  const ring1=document.createElement('div');ring1.className='card-gold-ring';
+  const ring2=document.createElement('div');ring2.className='card-gold-ring2';
+  document.body.appendChild(ring1);document.body.appendChild(ring2);
+
+  // 2. 골드 파티클
+  for(let i=0;i<20;i++){
     const p=document.createElement('div');p.className='card-burst';
-    const a=Math.random()*Math.PI*2;
-    const d=60+Math.random()*120;
-    const hue=Math.random()<.6?(38+Math.random()*20):(240+Math.random()*50);
-    p.style.cssText=`--px:${Math.cos(a)*d}px;--py:${Math.sin(a)*d}px;
-      background:hsla(${hue},80%,75%,.9);
-      box-shadow:0 0 6px hsla(${hue},80%,80%,.5);
-      animation-delay:${Math.random()*.15}s;animation-duration:${.5+Math.random()*.4}s;`;
+    const a=(i/20)*Math.PI*2;
+    const d=50+Math.random()*90;
+    const hue=35+Math.random()*25; // 골드 계열
+    p.style.cssText=`--px:${Math.cos(a)*d}px;--py:${Math.sin(a)*d}px;--delay:${i*.02}s;
+      width:${3+Math.random()*4}px;height:${3+Math.random()*4}px;
+      background:hsla(${hue},90%,70%,.95);
+      box-shadow:0 0 8px hsla(${hue},90%,75%,.6);`;
     document.body.appendChild(p);
-    setTimeout(()=>p.remove(),900);
+    setTimeout(()=>p.remove(),700);
   }
-  // 카드 날아오는 효과
+
+  // 3. 카드 황금 공개
   const fly=document.createElement('div');fly.className='card-fly';
-  fly.innerHTML=`<div class="card-fly-inner">
-    <img class="card-fly-img" src="${cardImg(card)}" onerror="this.style.display='none'">
-    <div class="card-fly-back">✦</div>
-    <div class="card-fly-shine"></div>
-  </div>`;
+  fly.innerHTML=`<img src="${cardImg(card)}" onerror="this.style.background='#14142e';this.style.display='none'">
+    <div class="card-fly-shine"></div>`;
   document.body.appendChild(fly);
-  // 화면 전체 플래시
+
+  // 4. 배경 플래시
   const flash=document.createElement('div');
-  flash.style.cssText=`position:fixed;inset:0;z-index:299;pointer-events:none;
-    background:radial-gradient(ellipse at center,rgba(201,168,76,.12) 0%,transparent 70%);
-    animation:cardGlow .6s ease forwards;`;
+  flash.style.cssText=`position:fixed;inset:0;z-index:307;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(201,168,76,.18) 0%,rgba(180,120,20,.06) 40%,transparent 70%);
+    opacity:1;transition:opacity .7s;`;
   document.body.appendChild(flash);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>flash.style.opacity='0'));
+
   setTimeout(()=>{
-    fly.style.transition='opacity .3s';fly.style.opacity='0';
-    setTimeout(()=>{fly.remove();flash.remove();if(onDone)onDone();},300);
-  },1100);
+    fly.style.transition='opacity .4s ease';fly.style.opacity='0';
+    setTimeout(()=>{
+      [fly,flash,rays,ring1,ring2].forEach(el=>el.remove());
+      if(onDone)onDone();
+    },400);
+  },1000);
 }
 
 function doDrawCard(){
@@ -2879,35 +2952,32 @@ document.addEventListener('click',function(e){
     return audioCtx;
   }
 
-  // 글리터 사운드: 랜덤 고음 벨 소리
+  // ── 사운드 시스템 ──
   let lastSoundTime=0;
+
+  // 글리터: 낮은 음역 부드러운 하프 물방울
   function playGlitterSound(){
     const now=Date.now();
-    if(now-lastSoundTime<80) return; // 너무 자주 울리지 않게
+    if(now-lastSoundTime<120) return;
     lastSoundTime=now;
     try{
       const ctx=getAudioCtx();
       if(ctx.state==='suspended') ctx.resume();
+      // 중저음 sine + 부드러운 reverb 느낌
+      const notes=[523,587,659,698,784,880]; // C5~A5 (편안한 중음)
+      const freq=notes[Math.floor(Math.random()*notes.length)];
       const osc=ctx.createOscillator();
       const gain=ctx.createGain();
       const pan=ctx.createStereoPanner();
-
-      // 랜덤 고음 (맑은 벨/크리스탈 음)
-      const notes=[2093,2349,2637,2794,3136,3520,3951,4186]; // C7~C8 범위
-      osc.frequency.value=notes[Math.floor(Math.random()*notes.length)];
       osc.type='sine';
-
-      // 음량: 매우 작게, 빠르게 페이드
+      osc.frequency.setValueAtTime(freq,ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(freq*.98,ctx.currentTime+.4);
       gain.gain.setValueAtTime(0,ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(.04+Math.random()*.03,ctx.currentTime+.01);
-      gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.25);
-
-      // 좌우 랜덤 패닝
-      pan.pan.value=(Math.random()-.5)*.8;
-
+      gain.gain.linearRampToValueAtTime(.018,ctx.currentTime+.02);
+      gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.5);
+      pan.pan.value=(Math.random()-.5)*.5;
       osc.connect(gain);gain.connect(pan);pan.connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime+.25);
+      osc.start(ctx.currentTime);osc.stop(ctx.currentTime+.5);
     }catch(e){}
   }
 
@@ -2973,6 +3043,65 @@ document.addEventListener('click',function(e){
   }
   setTimeout(loop,800);
 })();
+
+/* ── 게임 사운드 ── */
+(function(){
+  let _sctx=null;
+  function sctx(){
+    if(!_sctx) _sctx=new(window.AudioContext||window.webkitAudioContext)();
+    if(_sctx.state==='suspended') _sctx.resume();
+    return _sctx;
+  }
+
+  // 카드 뽑기: 황금빛 울림 (따뜻한 벨)
+  window.playCardDrawSound=function(){
+    try{
+      const c=sctx(),now=c.currentTime;
+      // 메인 음 (따뜻한 코드)
+      [293,370,440].forEach((f,i)=>{
+        const o=c.createOscillator(),g=c.createGain();
+        o.type='sine';o.frequency.value=f;
+        g.gain.setValueAtTime(0,now+i*.04);
+        g.gain.linearRampToValueAtTime(.06-.01*i,now+i*.04+.05);
+        g.gain.exponentialRampToValueAtTime(.0001,now+1.2);
+        o.connect(g);g.connect(c.destination);
+        o.start(now+i*.04);o.stop(now+1.3);
+      });
+      // 고음 반짝임
+      const o2=c.createOscillator(),g2=c.createGain();
+      o2.type='sine';o2.frequency.value=880;
+      g2.gain.setValueAtTime(0,now+.1);
+      g2.gain.linearRampToValueAtTime(.03,now+.15);
+      g2.gain.exponentialRampToValueAtTime(.0001,now+.6);
+      o2.connect(g2);g2.connect(c.destination);
+      o2.start(now+.1);o2.stop(now+.7);
+    }catch(e){}
+  };
+
+  // 셔플 사운드: 카드 넘기는 부스럭 소리 (노이즈 버스트)
+  window.playShuffleSound=function(){
+    try{
+      const c=sctx(),now=c.currentTime;
+      const n=4; // 4번 휙휙
+      for(let i=0;i<n;i++){
+        const buf=c.createBuffer(1,c.sampleRate*.08,c.sampleRate);
+        const d=buf.getChannelData(0);
+        for(let j=0;j<d.length;j++) d[j]=(Math.random()*2-1)*.15;
+        const src=c.createBufferSource();
+        const g=c.createGain();
+        const f=c.createBiquadFilter();
+        f.type='bandpass';f.frequency.value=2000+Math.random()*1000;f.Q.value=.8;
+        src.buffer=buf;
+        g.gain.setValueAtTime(0,now+i*.11);
+        g.gain.linearRampToValueAtTime(.18,now+i*.11+.02);
+        g.gain.exponentialRampToValueAtTime(.0001,now+i*.11+.08);
+        src.connect(f);f.connect(g);g.connect(c.destination);
+        src.start(now+i*.11);
+      }
+    }catch(e){}
+  };
+})();
+
 window.addEventListener('DOMContentLoaded',init);
 </script>
 <style>
@@ -3014,15 +3143,15 @@ window.addEventListener('DOMContentLoaded',init);
   <div class="discord-popup" id="discordPopup">
     <div class="discord-msg">💬 클릭 후 디스코드 대화로<br>상담 신청 메시지를 보내주시면<br>바로 상담하러 들어오겠습니다 ✦</div>
     <a class="discord-member" href="https://discordapp.com/users/601282870396321805" target="_blank">
-      <span style="font-size:14px">💬</span>
+      <span style="font-size:16px">💌</span>
       <span class="discord-member-name">왈순</span>
     </a>
     <a class="discord-member" href="https://discordapp.com/users/994182830450024488" target="_blank">
-      <span style="font-size:14px">💬</span>
+      <span style="font-size:16px">💌</span>
       <span class="discord-member-name">제갈현지</span>
     </a>
     <a class="discord-member" href="https://discordapp.com/users/473850754457927707" target="_blank">
-      <span style="font-size:14px">💬</span>
+      <span style="font-size:16px">💌</span>
       <span class="discord-member-name">쌀녀</span>
     </a>
   </div>
