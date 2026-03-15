@@ -118,7 +118,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 .in-session .discord-btn{display:none!important}
 .in-session #wofCanvas{display:none}
 .in-session .game-hud{display:none}
-/* sound-ctrl은 항상 표시 */
+.in-session .sound-ctrl{top:auto!important;bottom:14px!important;left:14px!important;transform:none!important;}
 .in-session .hex-grid{display:none}
 .in-session .scanline-wrap{display:none}
 .discord-tooltip{background:rgba(10,10,30,.95);border:1px solid var(--border2);border-radius:10px;
@@ -591,7 +591,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
   <div class="sound-panel">
     <span class="sound-lbl">BGM</span>
     <button class="sound-toggle on" id="btnBgm" onclick="toggleBgm()" title="BGM ON/OFF"></button>
-    <input class="sound-slider" id="sliderBgm" type="range" min="0" max="100" step="1" value="30"
+    <input class="sound-slider" id="sliderBgm" type="range" min="0" max="100" step="1" value="70"
       oninput="setBgmVol(this.value)" title="BGM 음량">
   </div>
   <div class="sound-panel">
@@ -3184,7 +3184,7 @@ document.addEventListener('click',function(e){
 /* ── 사운드 토글 ── */
 let _bgmOn=true,_sfxOn=true,_ambMaster=null;
 
-let _bgmVol=.35,_sfxVol=.7;
+let _bgmVol=.7,_sfxVol=.7;
 
 function toggleBgm(){
   _bgmOn=!_bgmOn;
@@ -3193,7 +3193,7 @@ function toggleBgm(){
   if(_ambMaster){
     const t=_ambMaster.context.currentTime;
     _ambMaster.gain.cancelScheduledValues(t);
-    _ambMaster.gain.linearRampToValueAtTime(_bgmOn?_bgmVol:.0001,t+1.0);
+    _ambMaster.gain.linearRampToValueAtTime(_bgmOn?_bgmVol:.0001,t+0.8);
   }
 }
 function setBgmVol(v){
@@ -3258,7 +3258,7 @@ function setSfxVol(v){
       const t=ambCtx.currentTime;
       const master=ambCtx.createGain();
       master.gain.setValueAtTime(0,t);
-      master.gain.linearRampToValueAtTime(.3,t+1.5); // 4초에 걸쳐 서서히 등장
+      master.gain.linearRampToValueAtTime(.7,t+1.5); // 4초에 걸쳐 서서히 등장
       _ambMaster=master; master.connect(ambCtx.destination);
 
       // ── 레이어 1: 딥 드론 (우주 공간감)
