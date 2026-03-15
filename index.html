@@ -689,7 +689,7 @@ let typingTimer=null,unreadChat=0,activeTab='card';
 // KEY FIX: track already-flipped cards to prevent re-animation on re-render
 const _flipped=new Set();
 
-const P='tr4/';
+const P='tr4_';
 const $=id=>document.getElementById(id);
 const show=id=>$(id).classList.remove('hidden');
 const hide=id=>$(id).classList.add('hidden');
@@ -725,14 +725,13 @@ function init(){
     db.ref(`${P}sessions/${savedRoom}/status`).once('value').then(snap=>{
       const st=snap.val();
       if(st==='active'){
-        // 상담 중이면 바로 세션으로
         enterSession();
       } else {
-        // 종료됐거나 없으면 저장 정보 지우고 처음으로
         clearState();
+        show('scrRole');
         setupRoleButtons();
       }
-    }).catch(()=>{clearState();setupRoleButtons();});
+    }).catch(()=>{clearState();show('scrRole');setupRoleButtons();});
     return;
   }
 
