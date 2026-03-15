@@ -689,7 +689,7 @@ let typingTimer=null,unreadChat=0,activeTab='card';
 // KEY FIX: track already-flipped cards to prevent re-animation on re-render
 const _flipped=new Set();
 
-const P='tr4_';
+const P='tr4/';
 const $=id=>document.getElementById(id);
 const show=id=>$(id).classList.remove('hidden');
 const hide=id=>$(id).classList.add('hidden');
