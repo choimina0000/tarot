@@ -1152,7 +1152,8 @@ async function startWith(clientKey,clientData){
     consultants:{[myKey]:{nick:myNick,joinedAt:Date.now()}},
     client:{nick:clientData.nick,age:clientData.age||'',gender:clientData.gender||'',question:clientData.question||''},
   });
-  await db.ref(`${P}sessions/${roomId}/rounds/0`).set({question:clientData.question||'',ts:Date.now()});
+  // 질문은 내담자가 직접 입력 (대기실 질문은 client.question에만 저장)
+  await db.ref(`${P}sessions/${roomId}/rounds/0`).set({question:'',ts:Date.now()});
   await db.ref(`${P}lobby/waiting/${clientKey}/sessionId`).set(roomId);
 
   db.ref(`${P}lobby/consultants/${myKey}`).remove();
@@ -1729,6 +1730,14 @@ function buildQInput(isAdd){
   const rnd2=currentRound;
   let chosenCount=3;
   setTimeout(()=>{
+    // 대기 시 입력한 질문 자동 채우기
+    if(!isAdd){
+      db.ref(`${P}sessions/${roomId}/client/question`).once('value').then(snap=>{
+        const prev=snap.val()||'';
+        const ta=sec.querySelector('#qTA');
+        if(ta&&prev) ta.value=prev;
+      });
+    }
     // 카드 수 버튼
     sec.querySelectorAll('.card-count-btn').forEach(b=>{
       b.onclick=()=>{
