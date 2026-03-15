@@ -224,7 +224,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 .err-msg{font-size:11px;color:var(--red);margin-top:-6px;margin-bottom:8px;letter-spacing:.5px}
 
 /* ROLE SELECT */
-.logo-wrap{text-align:left;margin-bottom:20px;max-width:600px}
+.logo-wrap{text-align:center;margin-bottom:20px;max-width:600px}
 .logo-eye{font-family:'Cinzel',serif;font-size:16px;letter-spacing:18px;color:rgba(201,168,76,.55);margin-bottom:6px;font-weight:400}
 .logo-main{font-family:'Cinzel',serif;font-size:clamp(56px,9vw,100px);font-weight:700;letter-spacing:10px;
   background:linear-gradient(135deg,#c9a84c 0%,#f0d070 40%,#c9a84c 60%,#a07830 100%);
@@ -232,7 +232,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
   text-shadow:none;
   background:linear-gradient(160deg,var(--gold2),var(--gold),#a07838);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .logo-sub{font-size:13px;color:rgba(180,170,210,.45);margin-top:8px;letter-spacing:8px;line-height:1.8;text-transform:uppercase;font-family:Cinzel,serif;font-weight:400}
-.role-btns{display:flex;gap:18px;flex-wrap:wrap;justify-content:flex-start;width:100%;max-width:520px;margin-top:10px}
+.role-btns{display:flex;gap:18px;flex-wrap:wrap;justify-content:center;width:100%;max-width:520px;margin-top:10px}
 .role-btn{flex:1;min-width:180px;padding:28px 24px;border-radius:14px;text-align:center;cursor:pointer;
   transition:all .25s;border:1px solid var(--border2);background:var(--panel)}
 .role-btn:hover{border-color:var(--gold3);background:rgba(201,168,76,.06);transform:translateY(-2px)}
@@ -512,12 +512,12 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 <canvas id="wofCanvas" style="position:fixed;inset:0;z-index:1;pointer-events:none"></canvas>
 
 <!-- ① ROLE SELECT -->
-<div id="scrRole" class="screen" style="justify-content:center;align-items:flex-start;padding-left:max(32px,5vw);padding-right:max(32px,5vw)">
+<div id="scrRole" class="screen" style="justify-content:center;align-items:center;padding:20px">
   <div class="logo-wrap">
     <div class="logo-eye" style="font-size:18px;letter-spacing:12px;opacity:1;color:var(--gold2)">L A K E</div>
     <div class="logo-main" id="logoTarot" style="cursor:default;user-select:none">TAROT</div>
     <div class="logo-sub">실시간 타로 상담 플랫폼</div>
-    <div style="margin-top:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+    <div style="margin-top:18px;display:flex;flex-direction:column;gap:6px;align-items:center">
       <div style="font-size:11px;color:rgba(201,168,76,.45);letter-spacing:6px;font-family:'Cinzel',serif;margin-bottom:6px">TAROT MASTER</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <span style="font-family:'Nanum Myeongjo',serif;font-size:18px;color:rgba(201,168,76,.8);letter-spacing:3px">제갈현지</span>
@@ -528,7 +528,7 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
       </div>
     </div>
   </div>
-  <div id="liveStatus" style="display:flex;gap:12px;justify-content:flex-start;margin-bottom:16px;flex-wrap:wrap">
+  <div id="liveStatus" style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:8px;background:rgba(140,100,220,.1);border:1px solid rgba(140,100,220,.35);border-radius:20px;padding:7px 18px">
       <div style="width:7px;height:7px;border-radius:50%;background:#a070e0;box-shadow:0 0 6px #a070e0"></div>
       <span style="font-size:14px;color:var(--text2);letter-spacing:1px">상담사 <span id="liveConsultants" style="color:#c090f0;font-weight:700">0</span>명 접속중</span>
