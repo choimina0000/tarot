@@ -181,6 +181,10 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
   transform:var(--base-transform) translateY(-28px) scale(1.06)!important;
   box-shadow:0 0 30px rgba(201,168,76,.6),0 0 60px rgba(201,168,76,.2);
   border-color:rgba(201,168,76,.6);z-index:410;}
+.spread-card[data-selected]:hover{
+  transform:var(--base-transform)!important;
+  box-shadow:0 0 30px rgba(201,168,76,.7), 0 0 60px rgba(201,168,76,.2);
+  border-color:rgba(201,168,76,.75);}
 .spread-card .cbf{border-radius:9px;width:100%;height:100%;}
 @keyframes spreadFlyIn{
   0%{opacity:0;transform:var(--base-transform) translateY(40px) scale(.7);}
@@ -2568,14 +2572,22 @@ function selectSpreadCard(card,el){
   el.style.pointerEvents='none';
   el.dataset.selected='1';
 
-  // 기존 rotate 각도 유지하면서 y축 위로만 올리기 (scale 변경 없음)
-  const rotMatch=el.style.transform.match(/rotate\(([^)]+)\)/);
+  // --base-transform에 translateY를 포함시켜서 hover !important와 충돌 방지
+  const rotMatch=(el.style.getPropertyValue('--base-transform')||el.style.transform).match(/rotate\([^)]+\)/);
   const rotVal=rotMatch?rotMatch[0]:'rotate(0deg)';
-  el.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94), box-shadow .3s, border-color .3s';
-  el.style.transform=rotVal+' translateY(-60px)';
+  const newBase=rotVal+' translateY(-60px)';
+  // animation forwards가 transform을 잠그므로: 현재 상태 고정 후 animation 제거
+  el.style.animation='none';
+  el.style.opacity='1';
+  el.style.transform=rotVal; // 현재 위치 고정
+  el.style.setProperty('--base-transform', newBase);
+  // 다음 프레임에서 Y축 이동 트랜지션 적용
+  requestAnimationFrame(()=>{
+    el.style.transition='transform .4s cubic-bezier(.25,.46,.45,.94), box-shadow .3s, border-color .3s';
+    el.style.transform=newBase;
+  });
   el.style.boxShadow='0 0 30px rgba(201,168,76,.7), 0 0 60px rgba(201,168,76,.2)';
   el.style.borderColor='rgba(201,168,76,.75)';
-  el.style.zIndex=String(412+_spreadDrawn);
 
   _selectedSpreadCards.push({card,el});
   _spreadDrawn++;
@@ -2595,15 +2607,21 @@ function selectSpreadCard(card,el){
   if(counter) counter.style.opacity='0';
 
   setTimeout(()=>{
-    // Phase 1: 안 뽑힌 카드 페이드아웃 (뽑힌 카드는 그 자리 유지)
+    // Phase 1: 모든 스프레드 카드 페이드아웃 (안 뽑힌 것 + 뽑힌 것 전부)
     document.querySelectorAll('.spread-card:not([data-selected])').forEach((c,i)=>{
       c.style.transition=`opacity .4s ease ${i*.01}s`;
       c.style.opacity='0';
-      setTimeout(()=>c.remove(),450);
+    });
+    _selectedSpreadCards.forEach(({el:se},i)=>{
+      se.style.transition=`opacity .4s ease ${i*.03}s`;
+      se.style.opacity='0';
     });
 
-    // Phase 2: 0.5초 후 뽑힌 카드들을 앞면으로 뒤집어 중앙 일렬 배치 + 강조
+    // Phase 2: 페이드아웃 후 → 새 쇼케이스 요소로 앞면 일렬 강조
     setTimeout(()=>{
+      // 기존 스프레드 카드 DOM 제거
+      document.querySelectorAll('.spread-card').forEach(c=>c.remove());
+
       const total=_selectedSpreadCards.length;
       const cw=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cw'))||120;
       const ch=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ch'))||205;
@@ -2612,51 +2630,53 @@ function selectSpreadCard(card,el){
       const startX=(window.innerWidth-totalW)/2;
       const centerY=(window.innerHeight-ch)/2;
 
-      _selectedSpreadCards.forEach(({card,el},i)=>{
-        // 앞면 이미지로 교체
-        el.innerHTML=`<img src="${cardImg(card)}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;display:block">`;
-        // 일렬 배치 + 강조 (opacity 0에서 페이드인)
-        el.style.transition='none';
-        el.style.opacity='0';
-        el.style.left=(startX+i*(cw+gap))+'px';
-        el.style.top=centerY+'px';
-        el.style.transform='rotate(0deg) scale(1.1)';
-        el.style.zIndex=String(420+i);
-        el.style.boxShadow='0 0 50px rgba(201,168,76,.8),0 0 100px rgba(201,168,76,.3)';
-        el.style.borderColor='rgba(201,168,76,.85)';
+      const showcaseEls=[];
 
-        requestAnimationFrame(()=>requestAnimationFrame(()=>{
-          el.style.transition=`opacity .5s ease ${i*.12}s, transform .5s ease ${i*.12}s`;
-          el.style.opacity='1';
-          el.style.transform='rotate(0deg) scale(1.1)';
-        }));
+      _selectedSpreadCards.forEach(({card},i)=>{
+        const sc=document.createElement('div');
+        sc.className='spread-showcase';
+        sc.style.cssText=`position:fixed;z-index:420;
+          width:${cw}px;height:${ch}px;border-radius:10px;overflow:hidden;
+          pointer-events:none;
+          left:${startX+i*(cw+gap)}px;top:${centerY}px;
+          transform:scale(1.08);opacity:0;
+          box-shadow:0 0 50px rgba(201,168,76,.8),0 0 100px rgba(201,168,76,.3);
+          border:1px solid rgba(201,168,76,.85);
+          transition:opacity .5s ease ${i*.12}s;`;
+        sc.innerHTML=`<img src="${cardImg(card)}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;display:block">`;
+        document.body.appendChild(sc);
+        showcaseEls.push(sc);
 
         // Firebase 저장
         setTimeout(()=>{
           db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()+i*3}`).set({id:card.id,ts:Date.now()+i*3});
           sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
           if(i===total-1) sendSysMsg('✦ 카드 선택이 완료되었습니다!');
-        }, i*100+300);
+        }, i*100+200);
       });
 
-      // Phase 3: 1.8초 강조 후 페이드아웃 → drawn-area에 바로 나타남
+      // 페이드인
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        showcaseEls.forEach(sc=>{ sc.style.opacity='1'; });
+      }));
+
+      // Phase 3: 2초 강조 후 쇼케이스 페이드아웃 → drawn-area에 바로 나타남
       setTimeout(()=>{
-        _selectedSpreadCards.forEach(({el},i)=>{
-          el.style.transition=`opacity .4s ease ${i*.06}s`;
-          el.style.opacity='0';
-          setTimeout(()=>el.remove(), i*60+450);
+        showcaseEls.forEach((sc,i)=>{
+          sc.style.transition=`opacity .4s ease ${i*.06}s`;
+          sc.style.opacity='0';
+          setTimeout(()=>sc.remove(), i*60+450);
         });
 
-        // 페이드아웃 완료 후 스프레드 닫기
-        const cleanupDelay=_selectedSpreadCards.length*60+500;
+        const cleanupDelay=showcaseEls.length*60+500;
         setTimeout(()=>{
           closeSpread();
           _selectedSpreadCards=[];
         }, cleanupDelay);
-      }, total*120+1800);
+      }, 2000);
 
-    },500);
-  },300);
+    },500); // Phase 1 페이드아웃 완료 대기
+  },300); // 마지막 카드 뽑은 후 0.3초
 }
 
 function closeSpread(){
@@ -2671,6 +2691,7 @@ function closeSpread(){
     e.style.transform+=' translateY(20px) scale(.9)';
     setTimeout(()=>e.remove(),300);
   });
+  document.querySelectorAll('.spread-showcase').forEach(e=>e.remove());
   const hint=document.getElementById('spreadHint');
   const counter=document.getElementById('spreadCounter');
   if(hint)hint.remove();if(counter)counter.remove();
@@ -3429,7 +3450,11 @@ document.addEventListener('click',function(e){
 /* ── 사운드 토글 ── */
 let _bgmOn=true,_sfxOn=true,_ambMaster=null;
 
-let _bgmVol=.7,_sfxVol=.7;
+// BGM 지수 커브: 슬라이더 50% = 현재 1% 음량 (0.01)
+// 0.5^n = 0.01 → n ≈ 6.64
+function _bgmCurve(v){ return v<=0 ? 0 : Math.pow(v, 6.64); }
+
+let _bgmVol=_bgmCurve(.65),_sfxVol=.7;
 
 function toggleSoundPanel(){
   const h=document.getElementById('soundHamburger');
@@ -3449,7 +3474,8 @@ function toggleBgm(){
   }
 }
 function setBgmVol(v){
-  const val=parseFloat(v)/100;
+  const raw=parseFloat(v)/100;
+  const val=_bgmCurve(raw);
   const wasZero=_bgmVol===0;
   _bgmVol=val;
   if(val===0&&_bgmOn){
@@ -3527,7 +3553,7 @@ function setSfxVol(v){
       const t=ambCtx.currentTime;
       const master=ambCtx.createGain();
       master.gain.setValueAtTime(0,t);
-      master.gain.linearRampToValueAtTime(0.65,t+1.5);
+      master.gain.linearRampToValueAtTime(_bgmVol,t+1.5);
       _ambMaster=master; master.connect(ambCtx.destination);
 
       // ── 레이어 1: 딥 드론 (우주 공간감)
