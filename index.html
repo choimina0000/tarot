@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Sans+KR:wght@300;400;500&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#05050e;--bg2:#09091a;--panel:#0c0c22;--card-bg:#0f0f28;
+  --bg:#000008;--bg2:#04041a;--panel:#06062a;--card-bg:#080820;
   --border:#1a1a40;--border2:#2a2a60;
   --gold:#c9a84c;--gold2:#e8c870;--gold3:#6a5520;
   --blue:#4a80d4;--blue2:#6ab4e8;--blue3:#1a3060;
@@ -17,11 +17,79 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
+body{background:#000008;color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
 #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+/* ── GAME FEEL ── */
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes glitch1{0%,95%,100%{clip-path:none;transform:none}96%{clip-path:inset(30% 0 50% 0);transform:translate(-3px,0)}97%{clip-path:inset(60% 0 20% 0);transform:translate(3px,0)}98%{clip-path:none;transform:none}}
+@keyframes glitch2{0%,97%,100%{opacity:1;transform:none}98%{opacity:.8;transform:translate(2px,-1px)}99%{transform:translate(-2px,1px)}}
+@keyframes bootup{0%{opacity:0;letter-spacing:20px}60%{opacity:1;letter-spacing:8px}100%{letter-spacing:8px}}
+@keyframes cursor{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes hexpulse{0%,100%{opacity:.04}50%{opacity:.09}}
+@keyframes btnready{0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0)}50%{box-shadow:0 0 0 6px rgba(201,168,76,.08)}}
+@keyframes roledot{0%{transform:scale(1);opacity:.6}50%{transform:scale(1.4);opacity:1}100%{transform:scale(1);opacity:.6}}
+
+/* 스캔라인 오버레이 */
+.scanline-wrap{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;}
+.scanline{position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(transparent,rgba(180,160,255,.06),transparent);
+  animation:scanline 8s linear infinite;}
+
+/* 헥사 그리드 패턴 */
+.hex-grid{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(180,160,255,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180,160,255,.06) 1px, transparent 1px);
+  background-size:60px 60px;
+  animation:hexpulse 4s ease-in-out infinite;
+  mask-image:radial-gradient(ellipse at 30% 50%, black 0%, transparent 65%);}
+
+/* 로고 글리치 */
+.logo-main{animation:glitch2 6s ease-in-out infinite;}
+
+/* 버튼 업그레이드 */
+.role-btn{
+  position:relative;overflow:hidden;
+  transition:all .2s;
+  animation:btnready 3s ease-in-out infinite;
+}
+.role-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(201,168,76,.06) 0%,transparent 50%,rgba(120,80,220,.06) 100%);
+  opacity:0;transition:opacity .3s;
+}
+.role-btn:hover::before{opacity:1;}
+.role-btn:hover{
+  border-color:rgba(201,168,76,.5)!important;
+  transform:translateY(-3px) scale(1.02);
+  box-shadow:0 8px 30px rgba(100,60,200,.25),0 0 0 1px rgba(201,168,76,.2);
+}
+.role-btn-icon{
+  font-size:22px;margin-bottom:8px;
+  display:inline-block;animation:roledot 3s ease-in-out infinite;
+}
+.role-btn:nth-child(2) .role-btn-icon{animation-delay:1.5s;}
+
+/* 상태 표시줄 (게임 HUD 느낌) */
+.game-hud{position:fixed;top:16px;left:20px;z-index:15;pointer-events:none;
+  font-family:'Cinzel',serif;font-size:9px;letter-spacing:3px;color:rgba(180,160,255,.3);
+  display:flex;flex-direction:column;gap:3px;}
+.hud-line{display:flex;align-items:center;gap:8px;}
+.hud-dot{width:4px;height:4px;border-radius:50%;background:rgba(180,160,255,.4);animation:roledot 2s ease-in-out infinite;}
+.hud-dot:nth-child(1){animation-delay:0s;}
+.hud-dot:nth-child(2){animation-delay:.4s;}
+.hud-dot:nth-child(3){animation-delay:.8s;}
+
+/* liveStatus 게임 스타일 */
+#liveStatus{font-family:'Cinzel',serif!important;}
+
 /* ── 디스코드 버튼 ── */
 .discord-btn{position:fixed;bottom:72px;right:22px;z-index:500;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .in-session .discord-btn{display:none!important}
+.in-session #wofCanvas{display:none}
+.in-session .game-hud{display:none}
+.in-session .hex-grid{display:none}
+.in-session .scanline-wrap{display:none}
 .discord-tooltip{background:rgba(10,10,30,.95);border:1px solid var(--border2);border-radius:10px;
   padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.6;max-width:220px;text-align:right;
   box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:0;transform:translateY(6px);
@@ -125,7 +193,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 .completion-comment-lbl{font-size:9px;color:var(--gold3);letter-spacing:2px;margin-bottom:2px}
 
 .hidden{display:none!important}
-.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto;background:var(--bg)}
+.screen{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow-y:auto;background:transparent}
 
 /* CARD BOX */
 .card-box{background:var(--panel);border:1px solid var(--border2);border-radius:16px;padding:32px 28px;width:100%;max-width:420px}
@@ -156,18 +224,21 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 .err-msg{font-size:11px;color:var(--red);margin-top:-6px;margin-bottom:8px;letter-spacing:.5px}
 
 /* ROLE SELECT */
-.logo-wrap{text-align:center;margin-bottom:28px}
-.logo-eye{font-family:'Cinzel',serif;font-size:11px;letter-spacing:8px;color:var(--gold2);opacity:.6;margin-bottom:6px}
-.logo-main{font-family:'Cinzel',serif;font-size:clamp(30px,8vw,54px);font-weight:700;letter-spacing:6px;
+.logo-wrap{text-align:left;margin-bottom:20px;max-width:600px}
+.logo-eye{font-family:'Cinzel',serif;font-size:16px;letter-spacing:18px;color:rgba(201,168,76,.55);margin-bottom:6px;font-weight:400}
+.logo-main{font-family:'Cinzel',serif;font-size:clamp(56px,9vw,100px);font-weight:700;letter-spacing:10px;
+  background:linear-gradient(135deg,#c9a84c 0%,#f0d070 40%,#c9a84c 60%,#a07830 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-shadow:none;
   background:linear-gradient(160deg,var(--gold2),var(--gold),#a07838);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.logo-sub{font-size:13px;color:var(--text2);margin-top:10px;letter-spacing:1px;line-height:1.8}
-.role-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;width:100%;max-width:380px}
-.role-btn{flex:1;min-width:140px;padding:22px 16px;border-radius:12px;text-align:center;cursor:pointer;
+.logo-sub{font-size:13px;color:rgba(180,170,210,.45);margin-top:8px;letter-spacing:8px;line-height:1.8;text-transform:uppercase;font-family:Cinzel,serif;font-weight:400}
+.role-btns{display:flex;gap:18px;flex-wrap:wrap;justify-content:flex-start;width:100%;max-width:520px;margin-top:10px}
+.role-btn{flex:1;min-width:180px;padding:28px 24px;border-radius:14px;text-align:center;cursor:pointer;
   transition:all .25s;border:1px solid var(--border2);background:var(--panel)}
 .role-btn:hover{border-color:var(--gold3);background:rgba(201,168,76,.06);transform:translateY(-2px)}
 .role-btn-icon{font-size:26px;margin-bottom:8px}
-.role-btn-label{font-family:'Cinzel',serif;font-size:12px;color:var(--gold);letter-spacing:2px}
-.role-btn-desc{font-size:12px;color:var(--text2);margin-top:3px;letter-spacing:.5px}
+.role-btn-label{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);letter-spacing:3px}
+.role-btn-desc{font-size:13px;color:var(--text2);margin-top:4px;letter-spacing:.5px}
 
 /* PASSWORD MODAL */
 #pwOverlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.82);
@@ -429,28 +500,42 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 </head>
 <body>
 <canvas id="stars"></canvas>
+<div class="hex-grid"></div>
+<div class="scanline-wrap"><div class="scanline"></div></div>
+<div class="game-hud" id="gameHud">
+  <div class="hud-line">
+    <div class="hud-dot"></div><div class="hud-dot"></div><div class="hud-dot"></div>
+    <span id="hudTime">00:00:00</span>
+  </div>
+  <div class="hud-line"><span>LAKE TAROT · SYSTEM ONLINE</span></div>
+</div>
+<canvas id="wofCanvas" style="position:fixed;inset:0;z-index:1;pointer-events:none"></canvas>
 
 <!-- ① ROLE SELECT -->
-<div id="scrRole" class="screen">
+<div id="scrRole" class="screen" style="justify-content:center;align-items:flex-start;padding-left:max(32px,5vw);padding-right:max(32px,5vw)">
   <div class="logo-wrap">
     <div class="logo-eye" style="font-size:18px;letter-spacing:12px;opacity:1;color:var(--gold2)">L A K E</div>
     <div class="logo-main" id="logoTarot" style="cursor:default;user-select:none">TAROT</div>
     <div class="logo-sub">실시간 타로 상담 플랫폼</div>
-    <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <div style="background:rgba(201,168,76,.08);border:1px solid var(--gold3);border-radius:20px;padding:9px 22px;font-family:'Nanum Myeongjo',serif;font-size:16px;color:var(--gold2);letter-spacing:2px;font-weight:700">✦ 제갈현지</div>
-      <div style="background:rgba(201,168,76,.08);border:1px solid var(--gold3);border-radius:20px;padding:9px 22px;font-family:'Nanum Myeongjo',serif;font-size:16px;color:var(--gold2);letter-spacing:2px;font-weight:700">✦ 왈순</div>
-      <div style="background:rgba(201,168,76,.08);border:1px solid var(--gold3);border-radius:20px;padding:9px 22px;font-family:'Nanum Myeongjo',serif;font-size:16px;color:var(--gold2);letter-spacing:2px;font-weight:700">✦ 쌀녀</div>
+    <div style="margin-top:18px;display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+      <div style="font-size:11px;color:rgba(201,168,76,.45);letter-spacing:6px;font-family:'Cinzel',serif;margin-bottom:6px">TAROT MASTER</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <span style="font-family:'Nanum Myeongjo',serif;font-size:18px;color:rgba(201,168,76,.8);letter-spacing:3px">제갈현지</span>
+        <span style="color:rgba(201,168,76,.25);font-size:12px;margin-top:2px">·</span>
+        <span style="font-family:'Nanum Myeongjo',serif;font-size:18px;color:rgba(201,168,76,.8);letter-spacing:3px">왈순</span>
+        <span style="color:rgba(201,168,76,.25);font-size:12px;margin-top:2px">·</span>
+        <span style="font-family:'Nanum Myeongjo',serif;font-size:18px;color:rgba(201,168,76,.8);letter-spacing:3px">쌀녀</span>
+      </div>
     </div>
-    <div style="margin-top:8px;font-size:12px;color:var(--text2);letter-spacing:4px;font-family:'Cinzel',serif">TAROT MASTER</div>
   </div>
-  <div id="liveStatus" style="display:flex;gap:16px;justify-content:center;margin-bottom:20px;flex-wrap:wrap">
+  <div id="liveStatus" style="display:flex;gap:12px;justify-content:flex-start;margin-bottom:16px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:8px;background:rgba(140,100,220,.1);border:1px solid rgba(140,100,220,.35);border-radius:20px;padding:7px 18px">
       <div style="width:7px;height:7px;border-radius:50%;background:#a070e0;box-shadow:0 0 6px #a070e0"></div>
-      <span style="font-size:13px;color:var(--text2);letter-spacing:1px">상담사 <span id="liveConsultants" style="color:#c090f0;font-weight:700">0</span>명 접속중</span>
+      <span style="font-size:14px;color:var(--text2);letter-spacing:1px">상담사 <span id="liveConsultants" style="color:#c090f0;font-weight:700">0</span>명 접속중</span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;background:rgba(78,205,196,.07);border:1px solid rgba(78,205,196,.3);border-radius:20px;padding:7px 18px">
       <div style="width:7px;height:7px;border-radius:50%;background:var(--blue2);box-shadow:0 0 6px var(--blue2)"></div>
-      <span style="font-size:13px;color:var(--text2);letter-spacing:1px">대기 내담자 <span id="liveClients" style="color:var(--blue2);font-weight:700">0</span>명</span>
+      <span style="font-size:14px;color:var(--text2);letter-spacing:1px">대기 내담자 <span id="liveClients" style="color:var(--blue2);font-weight:700">0</span>명</span>
     </div>
   </div>
   <div class="role-btns">
@@ -516,7 +601,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 </div>
 
 <!-- ④ LOBBY -->
-<div id="scrLobby" class="screen hidden" style="justify-content:flex-start;padding-top:20px;padding-bottom:20px;background:var(--bg)">
+<div id="scrLobby" class="screen hidden" style="justify-content:flex-start;padding-top:20px;padding-bottom:20px;background:transparent">
   <div class="lobby-wrap">
     <div class="lobby-top">
       <div>
@@ -863,15 +948,243 @@ const QUOTES=[
 
 /* ── STARS ── */
 (()=>{
-  const cv=document.getElementById('stars'),ctx=cv.getContext('2d');let s=[];
-  const rs=()=>{cv.width=innerWidth;cv.height=innerHeight;s=[];
-    for(let i=0;i<Math.floor(cv.width*cv.height/8000);i++)
-      s.push({x:Math.random()*cv.width,y:Math.random()*cv.height,r:Math.random()*1.2+.2,o:Math.random()*.8+.1,sp:Math.random()*2+1});};
-  const dr=()=>{ctx.clearRect(0,0,cv.width,cv.height);
-    s.forEach(st=>{const p=.5+.5*Math.sin(Date.now()/1000/st.sp+st.x);
-      ctx.beginPath();ctx.arc(st.x,st.y,st.r,0,Math.PI*2);
-      ctx.fillStyle=`rgba(200,190,255,${st.o*p})`;ctx.fill();});requestAnimationFrame(dr);};
-  window.addEventListener('resize',rs);rs();dr();
+  const cv=document.getElementById('stars'),ctx=cv.getContext('2d');
+  let W,H,stars=[],nebulas=[],meteors=[],lastMeteorTime=0;
+  const WOF_SYMBOLS=['♃','♄','☿','♦','✦','⊕','⊗','◈'];
+
+  let driftT=0; // 드리프트 시간
+  function resize(){
+    W=cv.width=innerWidth; H=cv.height=innerHeight;
+    stars=[];
+    const n=Math.floor(W*H/2200);  // 별 더 많이
+    for(let i=0;i<n;i++){
+      const t=Math.random();
+      stars.push({
+        x:Math.random()*W, y:Math.random()*H,
+        r: t>.97?Math.random()*2.2+1.5 : t>.85?Math.random()*1.1+0.5 : Math.random()*0.5+0.1,
+        o: Math.random()*0.8+0.15,
+        sp: Math.random()*4+0.8,
+        hue: 190+Math.random()*80,
+        bright: t>.97
+      });
+    }
+    nebulas=[];
+    const npos=[
+      {x:.18,y:.25,rx:420,ry:240,hue:220,o:.032},
+      {x:.82,y:.65,rx:360,ry:210,hue:260,o:.028},
+      {x:.5, y:.5, rx:600,ry:340,hue:200,o:.020},
+      {x:.1, y:.8, rx:200,ry:120,hue:280,o:.016},
+      {x:.9, y:.15,rx:250,ry:150,hue:230,o:.014},
+    ];
+    npos.forEach(p=>nebulas.push({x:p.x*W,y:p.y*H,rx:p.rx,ry:p.ry,hue:p.hue,o:p.o,rot:Math.random()*Math.PI}));
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const t=Date.now()/1000;
+
+    // 우주 배경 - 은하 중심 깊이감
+    const bg=ctx.createRadialGradient(W*.46,H*.35,0,W*.46,H*.35,W*.85);
+    bg.addColorStop(0,'rgba(45,20,100,.85)');
+    bg.addColorStop(.2,'rgba(20,8,60,.65)');
+    bg.addColorStop(.5,'rgba(5,3,25,.5)');
+    bg.addColorStop(.8,'rgba(1,1,10,.3)');
+    bg.addColorStop(1,'rgba(0,0,4,.0)');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+    // 성간 빛 스윕 (시간에 따라 흐르는 빛의 띠)
+    const sweepAngle=t*.04;
+    const sx=W*.5+Math.cos(sweepAngle)*W*.8;
+    const sy=H*.5+Math.sin(sweepAngle)*H*.6;
+    const sweep=ctx.createRadialGradient(sx,sy,0,sx,sy,W*.6);
+    sweep.addColorStop(0,'rgba(120,80,200,.04)');
+    sweep.addColorStop(.3,'rgba(80,50,160,.02)');
+    sweep.addColorStop(1,'transparent');
+    ctx.fillStyle=sweep; ctx.fillRect(0,0,W,H);
+
+    // 성운 (천천히 드리프트)
+    driftT+=0.00015;
+    nebulas.forEach(n=>{
+      const dx=Math.sin(driftT*n.hue*.001+n.hue)*W*.04;
+      const dy=Math.cos(driftT*n.hue*.0007+n.hue)*H*.025;
+      ctx.save(); ctx.translate(n.x+dx,n.y+dy); ctx.rotate(n.rot+t*.004);
+      ctx.scale(n.rx/n.ry,1);
+      const g=ctx.createRadialGradient(0,0,0,0,0,n.ry);
+      g.addColorStop(0,`hsla(${n.hue},65%,55%,${n.o*2.5})`);
+      g.addColorStop(.4,`hsla(${n.hue+25},55%,40%,${n.o*1.2})`);
+      g.addColorStop(1,`hsla(${n.hue},40%,20%,0)`);
+      ctx.beginPath(); ctx.arc(0,0,n.ry,0,Math.PI*2);
+      ctx.fillStyle=g; ctx.fill(); ctx.restore();
+    });
+
+    // 별 (크기에 따라 시차 드리프트 속도 다름)
+    stars.forEach(st=>{
+      const parallax=st.r*.012; // 큰 별일수록 더 많이 이동 (시차)
+      const sdx=Math.sin(driftT*18*parallax+st.y*.003)*W*parallax*.5;
+      const sdy=Math.cos(driftT*14*parallax+st.x*.003)*H*parallax*.3;
+      const p=.45+.55*Math.sin(t/st.sp+st.x*.008);
+      const a=st.o*p;
+      if(st.bright){
+        const grd=ctx.createRadialGradient(st.x,st.y,0,st.x,st.y,st.r*10);
+        grd.addColorStop(0,`hsla(${st.hue},80%,95%,${a*.9})`);
+        grd.addColorStop(1,'transparent');
+        ctx.fillStyle=grd;
+        ctx.beginPath();ctx.arc(st.x+sdx,st.y+sdy,st.r*10,0,Math.PI*2);ctx.fill();
+        for(let k=0;k<4;k++){
+          ctx.save();ctx.translate(st.x+sdx,st.y+sdy);ctx.rotate(k*Math.PI/4+t*.1);
+          const lg=ctx.createLinearGradient(0,-st.r*16,0,st.r*16);
+          lg.addColorStop(0,'transparent');
+          lg.addColorStop(.5,`hsla(${st.hue},90%,98%,${a*.45})`);
+          lg.addColorStop(1,'transparent');
+          ctx.fillStyle=lg;
+          ctx.fillRect(-st.r*.25,-st.r*16,st.r*.5,st.r*32);
+          ctx.restore();
+        }
+      }
+      ctx.beginPath();ctx.arc(st.x+sdx,st.y+sdy,st.r,0,Math.PI*2);
+      ctx.fillStyle=`hsla(${st.hue},50%,${st.bright?98:85}%,${a})`;
+      ctx.fill();
+    });
+
+    // 유성
+    if(t*1000-lastMeteorTime>2500+Math.random()*5000){
+      lastMeteorTime=t*1000;
+      meteors.push({x:Math.random()*W*.7,y:Math.random()*H*.4,
+        len:100+Math.random()*200,angle:Math.PI/5+Math.random()*.25,
+        speed:10+Math.random()*8,life:1,hue:210+Math.random()*30});
+    }
+    meteors=meteors.filter(m=>{
+      m.x+=Math.cos(m.angle)*m.speed; m.y+=Math.sin(m.angle)*m.speed; m.life-=.025;
+      if(m.life<=0)return false;
+      const mg=ctx.createLinearGradient(m.x-Math.cos(m.angle)*m.len,m.y-Math.sin(m.angle)*m.len,m.x,m.y);
+      mg.addColorStop(0,'transparent');
+      mg.addColorStop(1,`hsla(${m.hue},80%,95%,${m.life*.85})`);
+      ctx.beginPath();
+      ctx.moveTo(m.x-Math.cos(m.angle)*m.len,m.y-Math.sin(m.angle)*m.len);
+      ctx.lineTo(m.x,m.y);
+      ctx.strokeStyle=mg;ctx.lineWidth=1.5*m.life;ctx.stroke();
+      return true;
+    });
+
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);resize();draw();
+})();
+
+
+// HUD 시계
+setInterval(()=>{
+  const el=document.getElementById('hudTime');
+  if(el){const n=new Date();
+  el.textContent=[n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');}
+},1000);
+
+/* ═══════════════════════════════
+   WHEEL OF FORTUNE ORBE
+═══════════════════════════════ */
+(function(){
+  const wc=document.getElementById('wofCanvas');
+  if(!wc)return;
+  const wx=wc.getContext('2d');
+  let W,H;
+
+  function resizeWof(){W=wc.width=innerWidth;H=wc.height=innerHeight;}
+  window.addEventListener('resize',resizeWof);resizeWof();
+
+  // 우측 상단에 -π ~ -π/2 구간만 보이도록 (4분의 1원)
+  // 바퀴 중심을 우측 상단 모서리 바깥에 배치
+  const R=()=>Math.min(W,H)*.32;
+  const CX=()=>W+R()*.02;   // 오른쪽 바깥
+  const CY=()=>-R()*.02;    // 위쪽 바깥
+
+  // 흰빛 별 색상
+  const C1='rgba(220,215,255,', C2='rgba(200,195,240,', C3='rgba(255,255,255,';
+
+  function drawWof(t){
+    wx.clearRect(0,0,W,H);
+    const x=CX(),y=CY(),r=R();
+    const rot=t*.008; // 매우 천천히
+
+    wx.save();wx.translate(x,y);wx.rotate(rot);
+
+    // 후광 (은은한 흰빛)
+    const glow=wx.createRadialGradient(0,0,r*.3,0,0,r*1.6);
+    glow.addColorStop(0,'rgba(200,195,255,.06)');
+    glow.addColorStop(.5,'rgba(180,170,240,.03)');
+    glow.addColorStop(1,'transparent');
+    wx.fillStyle=glow;
+    wx.beginPath();wx.arc(0,0,r*1.6,0,Math.PI*2);wx.fill();
+
+    // 바깥 원 (가장 외곽)
+    wx.beginPath();wx.arc(0,0,r,0,Math.PI*2);
+    wx.strokeStyle=C1+'.45)';wx.lineWidth=1.2;
+    wx.shadowColor='rgba(220,215,255,.3)';wx.shadowBlur=8;
+    wx.stroke();wx.shadowBlur=0;
+
+    // 두번째 원
+    wx.beginPath();wx.arc(0,0,r*.78,0,Math.PI*2);
+    wx.strokeStyle=C1+'.25)';wx.lineWidth=.8;wx.stroke();
+
+    // 바퀴살 12개 (더 포멀하게)
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6;
+      wx.beginPath();wx.moveTo(r*.14*Math.cos(a),r*.14*Math.sin(a));
+      wx.lineTo(r*.76*Math.cos(a),r*.76*Math.sin(a));
+      wx.strokeStyle=C2+'.2)';wx.lineWidth=.8;wx.stroke();
+    }
+
+    // 중간 원
+    wx.beginPath();wx.arc(0,0,r*.52,0,Math.PI*2);
+    wx.strokeStyle=C1+'.3)';wx.lineWidth=1;
+    wx.shadowColor='rgba(220,215,255,.2)';wx.shadowBlur=6;
+    wx.stroke();wx.shadowBlur=0;
+
+    // 안쪽 원
+    wx.beginPath();wx.arc(0,0,r*.28,0,Math.PI*2);
+    wx.strokeStyle=C1+'.2)';wx.lineWidth=.7;wx.stroke();
+
+    // 중심 원
+    wx.beginPath();wx.arc(0,0,r*.1,0,Math.PI*2);
+    const ig=wx.createRadialGradient(0,0,0,0,0,r*.1);
+    ig.addColorStop(0,C3+'.25)');ig.addColorStop(1,C1+'.05)');
+    wx.fillStyle=ig;wx.fill();
+    wx.strokeStyle=C1+'.35)';wx.lineWidth=.8;wx.stroke();
+
+    // 바깥 원 위 포인트 장식 (12시, 3시, 6시, 9시)
+    for(let i=0;i<8;i++){
+      const a=i*Math.PI/4;
+      const px=r*Math.cos(a),py=r*Math.sin(a);
+      wx.beginPath();wx.arc(px,py,r*.022,0,Math.PI*2);
+      wx.fillStyle=C1+'.5)';wx.fill();
+    }
+
+    // 중간원 위 작은 점
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6;
+      wx.beginPath();wx.arc(r*.52*Math.cos(a),r*.52*Math.sin(a),r*.012,0,Math.PI*2);
+      wx.fillStyle=C2+'.4)';wx.fill();
+    }
+
+    wx.restore();
+
+    // 문자 (반대 방향 회전 - 항상 정방향)
+    wx.save();wx.translate(x,y);
+    const syms=['T','A','R','O','T','·','L','K'];
+    syms.forEach((s,i)=>{
+      const a=i*Math.PI/4+rot;
+      wx.save();wx.translate(Math.cos(a)*r*.88,Math.sin(a)*r*.88);
+      wx.rotate(a+Math.PI/2);
+      wx.fillStyle=C1+'.5)';
+      wx.font=`${r*.085}px Cinzel,serif`;
+      wx.textAlign='center';wx.textBaseline='middle';
+      wx.fillText(s,0,0);
+      wx.restore();
+    });
+    wx.restore();
+
+    requestAnimationFrame(t=>drawWof(t/60));
+  }
+  requestAnimationFrame(t=>drawWof(t/60));
 })();
 
 /* ═══════════════════════════════
@@ -2337,6 +2650,24 @@ function loadAdminSessions(){
   });
 }
 
+
+// 버튼 클릭 파티클
+document.addEventListener('click',function(e){
+  const btn=e.target.closest('.role-btn,.btn-gold,.hb');if(!btn)return;
+  for(let i=0;i<8;i++){
+    const p=document.createElement('div');
+    const a=Math.random()*Math.PI*2,dist=30+Math.random()*40;
+    p.style.cssText=`position:fixed;left:${e.clientX}px;top:${e.clientY}px;
+      width:3px;height:3px;border-radius:50%;pointer-events:none;z-index:9999;
+      background:rgba(201,168,76,.8);transition:all .6s ease-out;`;
+    document.body.appendChild(p);
+    requestAnimationFrame(()=>{
+      p.style.transform=`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px)`;
+      p.style.opacity='0';p.style.width='1px';p.style.height='1px';
+    });
+    setTimeout(()=>p.remove(),600);
+  }
+});
 window.addEventListener('DOMContentLoaded',init);
 </script>
 <style>
