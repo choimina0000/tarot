@@ -77,10 +77,34 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 
 /* ── 사운드 컨트롤 ── */
 .sound-ctrl{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:500;
-  display:flex;gap:10px;align-items:center;}
+  display:flex;gap:8px;align-items:center;}
+/* 세션 중: 좌측하단에 햄버거 방식 */
+.in-session .sound-ctrl{
+  top:auto!important;bottom:14px!important;left:14px!important;
+  transform:none!important;flex-direction:column;align-items:flex-start;}
+/* 메인에서는 햄버거 숨기고 패널 바로 표시 */
+.sound-hamburger{display:none;}
+.in-session .sound-hamburger{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:rgba(6,4,24,.85);border:1px solid rgba(200,195,255,.2);
+  border-radius:10px;width:36px;height:36px;cursor:pointer;
+  backdrop-filter:blur(10px);transition:all .2s;flex-shrink:0;}
+.in-session .sound-hamburger:hover{border-color:rgba(201,168,76,.5);}
+.sound-hamburger span{display:block;width:16px;height:2px;border-radius:1px;
+  background:rgba(200,195,255,.75);transition:all .2s;}
+.sound-hamburger.open span:nth-child(1){transform:rotate(45deg) translate(4px,4px);}
+.sound-hamburger.open span:nth-child(2){opacity:0;}
+.sound-hamburger.open span:nth-child(3){transform:rotate(-45deg) translate(4px,-4px);}
+/* 패널 묶음: 메인에서는 바로 보임, 세션에서는 토글 */
+.sound-panels{display:flex;gap:8px;align-items:center;}
+.in-session .sound-panels{
+  flex-direction:column;align-items:flex-start;
+  max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .3s ease,opacity .25s;pointer-events:none;}
+.in-session .sound-panels.open{max-height:200px;opacity:1;pointer-events:all;}
 .sound-panel{background:rgba(6,4,24,.82);border:1px solid rgba(200,195,255,.18);
   border-radius:22px;padding:6px 14px;backdrop-filter:blur(12px);
-  display:flex;align-items:center;gap:10px;transition:all .25s;}
+  display:flex;align-items:center;gap:10px;white-space:nowrap;transition:border-color .25s;}
 .sound-panel:hover{border-color:rgba(201,168,76,.35);}
 .sound-toggle{width:28px;height:16px;border-radius:8px;border:none;cursor:pointer;
   position:relative;transition:background .2s;flex-shrink:0;
@@ -618,17 +642,22 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 <canvas id="stars"></canvas>
 <div class="scanline-wrap"><div class="scanline"></div></div>
 <div class="sound-ctrl" id="soundCtrl">
-  <div class="sound-panel">
-    <span class="sound-lbl">BGM</span>
-    <button class="sound-toggle on" id="btnBgm" onclick="toggleBgm()" title="BGM ON/OFF"></button>
-    <input class="sound-slider" id="sliderBgm" type="range" min="0" max="100" step="1" value="70"
-      oninput="setBgmVol(this.value)" title="BGM 음량">
-  </div>
-  <div class="sound-panel">
-    <span class="sound-lbl">SFX</span>
-    <button class="sound-toggle on" id="btnSfx" onclick="toggleSfx()" title="SFX ON/OFF"></button>
-    <input class="sound-slider" id="sliderSfx" type="range" min="0" max="100" step="1" value="70"
-      oninput="setSfxVol(this.value)" title="SFX 음량">
+  <button class="sound-hamburger" id="soundHamburger" onclick="toggleSoundPanel()">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="sound-panels" id="soundPanels">
+    <div class="sound-panel">
+      <span class="sound-lbl">BGM</span>
+      <button class="sound-toggle on" id="btnBgm" onclick="toggleBgm()"></button>
+      <input class="sound-slider" id="sliderBgm" type="range" min="0" max="100" step="1" value="65"
+        oninput="setBgmVol(this.value)">
+    </div>
+    <div class="sound-panel">
+      <span class="sound-lbl">SFX</span>
+      <button class="sound-toggle on" id="btnSfx" onclick="toggleSfx()"></button>
+      <input class="sound-slider" id="sliderSfx" type="range" min="0" max="100" step="1" value="70"
+        oninput="setSfxVol(this.value)">
+    </div>
   </div>
 </div>
 <div class="game-hud" id="gameHud">
@@ -2525,37 +2554,91 @@ function _onSpreadEsc(e){
   if(e.key==='Escape') closeSpread();
 }
 
+let _selectedSpreadCards=[];
+
 function selectSpreadCard(card,el){
   if(!_spreadActive)return;
 
-  // 선택된 카드 강조
+  // 선택된 카드 골드 강조 + 위로 올라옴
   el.style.pointerEvents='none';
-  el.style.transition='transform .3s,box-shadow .3s';
-  el.style.transform=`${el.style.getPropertyValue('--base-transform')||''} translateY(-60px) scale(1.15)`;
-  el.style.boxShadow='0 0 50px rgba(201,168,76,.9)';
+  el.style.transition='transform .4s cubic-bezier(.175,.885,.32,1.275),box-shadow .3s';
+  el.style.transform='translateX(-50%) translateY(-90px) scale(1.12)';
+  el.style.left='50%';
+  el.style.boxShadow='0 0 50px rgba(201,168,76,.9),0 0 100px rgba(201,168,76,.4)';
   el.style.borderColor='rgba(201,168,76,.9)';
+  el.style.zIndex='415';
 
-  setTimeout(()=>{
-    _spreadDrawn++;
-    const counter=document.getElementById('spreadCounter');
-    if(counter) counter.textContent=`${_spreadDrawn}/${maxCards} 선택됨`;
+  _selectedSpreadCards.push({card,el});
+  _spreadDrawn++;
 
-    // 카드 뽑기 애니메이션 + 저장
-    const qVisible=document.querySelector('#qTA');
-    if(!qVisible) playCardDrawAnim(card,null);
-    db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()}`).set({id:card.id,ts:Date.now()});
-    sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
+  const counter=document.getElementById('spreadCounter');
+  if(counter) counter.textContent=`${_spreadDrawn}/${maxCards} 선택됨`;
 
-    if(_spreadDrawn>=maxCards){
-      sendSysMsg('✦ 카드 선택이 완료되었습니다!');
-      setTimeout(closeSpread,1200);
-    } else {
-      const hint=document.getElementById('spreadHint');
-      if(hint) hint.textContent=`${maxCards-_spreadDrawn}장 더 골라주세요`;
-      // 선택된 카드 제거
-      setTimeout(()=>el.remove(),400);
-    }
-  },300);
+  if(_spreadDrawn>=maxCards){
+    // 모두 선택됨 → 나머지 카드 덱으로 회수 후 선택 카드 공개
+    const hint=document.getElementById('spreadHint');
+    if(hint){hint.textContent='카드가 공개됩니다...';hint.style.color='rgba(201,168,76,.9)';}
+
+    setTimeout(()=>{
+      // 안 뽑힌 카드들 덱으로 회수 애니메이션
+      const deckEl=$('deckStack');
+      const deckRect=deckEl?deckEl.getBoundingClientRect():null;
+      document.querySelectorAll('.spread-card:not([data-selected])').forEach((c,i)=>{
+        c.style.transition=`transform .5s ease ${i*.02}s, opacity .4s ease ${i*.02}s`;
+        if(deckRect){
+          c.style.transform=`translate(${deckRect.left+deckRect.width/2-parseFloat(c.style.left||0)-60}px,
+            ${deckRect.top+deckRect.height/2-parseFloat(c.style.top||0)-100}px) scale(.3) rotate(${Math.random()*40-20}deg)`;
+        } else {
+          c.style.transform='scale(0) rotate(20deg)';
+        }
+        c.style.opacity='0';
+        setTimeout(()=>c.remove(),520);
+      });
+
+      // 선택된 카드 표시 후 저장
+      _selectedSpreadCards.forEach(({card,el},i)=>{
+        el.dataset.selected='1';
+        // 선택된 카드 공개 (앞면 보여주기)
+        setTimeout(()=>{
+          el.style.transition='transform .6s ease, left .6s ease, top .6s ease, box-shadow .3s';
+          // 화면 중앙에 나란히 배치
+          const total=_selectedSpreadCards.length;
+          const cardW=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cw'))||120;
+          const spacing=cardW+16;
+          const startX=window.innerWidth/2-(total-1)*spacing/2;
+          el.style.left=`${startX+i*spacing}px`;
+          el.style.top=`${window.innerHeight/2-140}px`;
+          el.style.transform='rotate(0deg)';
+          el.style.boxShadow='0 0 30px rgba(201,168,76,.5)';
+          // 앞면 이미지 삽입
+          el.innerHTML=`<img src="${cardImg(card)}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">`;
+        }, i*150);
+
+        // Firebase 저장
+        setTimeout(()=>{
+          const qVisible=document.querySelector('#qTA');
+          if(!qVisible) playCardDrawAnim(card,null);
+          db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()+i}`).set({id:card.id,ts:Date.now()+i});
+          sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
+          if(i===_selectedSpreadCards.length-1){
+            sendSysMsg('✦ 카드 선택이 완료되었습니다!');
+          }
+        }, i*150+300);
+      });
+
+      // 1.5초 후 스프레드 닫기
+      setTimeout(()=>{
+        closeSpread();
+        _selectedSpreadCards=[];
+      }, _selectedSpreadCards.length*150+1800);
+
+    }, 600);
+
+  } else {
+    const hint=document.getElementById('spreadHint');
+    if(hint) hint.textContent=`${maxCards-_spreadDrawn}장 더 골라주세요`;
+    el.dataset.selected='1';
+  }
 }
 
 function closeSpread(){
@@ -3402,7 +3485,7 @@ function setSfxVol(v){
       const t=ambCtx.currentTime;
       const master=ambCtx.createGain();
       master.gain.setValueAtTime(0,t);
-      master.gain.linearRampToValueAtTime(.7,t+1.5); // 4초에 걸쳐 서서히 등장
+      master.gain.linearRampToValueAtTime(0.65,t+1.5); // 4초에 걸쳐 서서히 등장
       _ambMaster=master; master.connect(ambCtx.destination);
 
       // ── 레이어 1: 딥 드론 (우주 공간감)
