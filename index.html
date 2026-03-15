@@ -19,6 +19,40 @@
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
 #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+/* ── 디스코드 버튼 ── */
+.discord-btn{position:fixed;bottom:22px;right:22px;z-index:500;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.discord-tooltip{background:rgba(10,10,30,.95);border:1px solid var(--border2);border-radius:10px;
+  padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.6;max-width:220px;text-align:right;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:0;transform:translateY(6px);
+  transition:opacity .2s,transform .2s;pointer-events:none}
+.discord-tooltip.show{opacity:1;transform:translateY(0)}
+.discord-icon{width:46px;height:46px;border-radius:50%;background:#5865F2;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;box-shadow:0 2px 16px rgba(88,101,242,.5);
+  transition:transform .15s,box-shadow .15s;text-decoration:none}
+.discord-icon:hover{transform:scale(1.1);box-shadow:0 4px 24px rgba(88,101,242,.7)}
+.discord-icon svg{width:24px;height:24px;fill:#fff}
+
+/* ── 카드 개수 선택 ── */
+.card-count-sec{background:rgba(201,168,76,.06);border:1px solid var(--gold3);border-radius:12px;
+  padding:16px 20px;margin-bottom:14px;text-align:center}
+.card-count-title{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);letter-spacing:2px;margin-bottom:8px}
+.card-count-rec{font-size:11px;color:var(--green);letter-spacing:1px;margin-bottom:12px;
+  background:rgba(72,194,112,.1);border:1px solid rgba(72,194,112,.3);border-radius:6px;padding:4px 10px;display:inline-block}
+.card-count-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.card-count-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--text2);font-size:15px;font-weight:700;cursor:pointer;
+  transition:all .15s;font-family:'Cinzel',serif}
+.card-count-btn:hover{border-color:var(--gold3);color:var(--gold2);background:rgba(201,168,76,.1)}
+.card-count-btn.selected{border-color:var(--gold);color:var(--gold);background:rgba(201,168,76,.18);
+  box-shadow:0 0 12px rgba(201,168,76,.3)}
+
+/* ── 몰입 요소 ── */
+.immerse-msg{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;
+  color:var(--text2);text-align:center;line-height:1.9;margin:10px 0;opacity:.85}
+.shuffle-hint{font-size:12px;color:var(--gold3);letter-spacing:1px;text-align:center;
+  margin-top:6px;animation:fadeInOut 3s ease-in-out infinite}
+@keyframes fadeInOut{0%,100%{opacity:.4}50%{opacity:1}}
+
 /* ── 세션 내 대기 패널 ── */
 .wait-panel{border-top:1px solid var(--border);flex-shrink:0}
 .wait-panel-hdr{padding:10px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
@@ -496,7 +530,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
     </div>
     <div class="lobby-settings">
       <div class="lset-lbl">카드 뽑기 제한</div>
-      <select class="lset-select" id="maxCardsSel">
+      <select class="lset-select" id="maxCardsSel" style="display:none">
         <option value="1">1장</option>
         <option value="3" selected>3장</option>
         <option value="5">5장</option>
@@ -1103,7 +1137,7 @@ async function joinSession(rid,s){
 }
 
 async function startWith(clientKey,clientData){
-  const maxC=parseInt($('maxCardsSel').value)||3;
+  const maxC=3; // 내담자가 질문 입력 시 직접 선택
   const ref=db.ref(`${P}lobby/waiting/${clientKey}/status`);
   const res=await ref.transaction(s=>{if(s==='waiting')return 'claimed';return undefined;});
   if(!res.committed){notify('이미 다른 상담사가 선택했어요');return;}
@@ -1662,17 +1696,50 @@ function updatePinnedQFromRounds(rounds){
 /* ─ Q INPUT UI ─ */
 function buildQInput(isAdd){
   const sec=document.createElement('div');sec.className='q-sec';
+  const immerseMsgs=[
+    '눈을 감고 마음속 깊은 곳에 있는 질문을 떠올려보세요.',
+    '카드는 당신의 내면을 비추는 거울입니다.',
+    '지금 이 순간, 가장 간절한 것이 무엇인가요?',
+    '천천히, 깊게 숨을 들이쉬고 질문을 정리해보세요.',
+    '타로는 답을 주는 것이 아니라, 길을 보여줍니다.'
+  ];
+  const immerseMsg=immerseMsgs[Math.floor(Math.random()*immerseMsgs.length)];
   sec.innerHTML=`
     <div class="q-title">${isAdd?`✦ 추가 질문 — Round ${currentRound+1}`:'✦ 오늘의 질문'}</div>
+    <p class="immerse-msg">${immerseMsg}</p>
     <div class="q-desc">${isAdd?'상담사가 추가 질문을 요청했어요.<br>새 질문을 적어주세요.':'마음속에 있는 고민이나 궁금한 것을 적어주세요.'}</div>
     <div class="field"><textarea id="qTA" placeholder="질문을 입력하세요..." style="height:80px;width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:11px 14px;color:var(--text);font-family:Noto Sans KR,sans-serif;font-size:14px;resize:none;line-height:1.6"></textarea></div>
+    ${!isAdd?`<div class="card-count-sec">
+      <div class="card-count-title">뽑을 카드 수를 선택하세요</div>
+      <div class="card-count-rec">✦ 권장: 3~5장</div>
+      <div class="card-count-btns">
+        <button class="card-count-btn" data-n="1">1</button>
+        <button class="card-count-btn" data-n="2">2</button>
+        <button class="card-count-btn selected" data-n="3">3</button>
+        <button class="card-count-btn" data-n="4">4</button>
+        <button class="card-count-btn" data-n="5">5</button>
+        <button class="card-count-btn" data-n="7">7</button>
+        <button class="card-count-btn" data-n="10">10</button>
+      </div>
+    </div>`:''}
     <button class="btn btn-gold" id="qBtn" style="max-width:240px;margin:0 auto">질문 확정 →</button>`;
   const rnd2=currentRound;
+  let chosenCount=3;
   setTimeout(()=>{
+    // 카드 수 버튼
+    sec.querySelectorAll('.card-count-btn').forEach(b=>{
+      b.onclick=()=>{
+        sec.querySelectorAll('.card-count-btn').forEach(x=>x.classList.remove('selected'));
+        b.classList.add('selected');
+        chosenCount=parseInt(b.dataset.n);
+      };
+    });
     const btn=$('qBtn'),ta=$('qTA');
     if(btn&&ta) btn.onclick=()=>{
       const q=ta.value.trim();if(!q){notify('질문을 입력해주세요');return;}
       btn.disabled=true;
+      // 카드 수 Firebase에 저장
+      if(!isAdd) db.ref(`${P}sessions/${roomId}/maxCards`).set(chosenCount);
       db.ref(`${P}sessions/${roomId}/rounds/${rnd2}`).update({question:q,ts:Date.now()})
         .then(()=>sendSysMsg(`✦ [Round ${rnd2+1}] 질문: ${q}`));
     };
@@ -1685,7 +1752,8 @@ function buildDeckUI(interactive,alreadyDrawn){
   const drawn=alreadyDrawn||0;
   const sec=document.createElement('div');sec.className='deck-sec';
   sec.innerHTML=`
-    <div class="deck-lbl">${interactive?'마음을 모아 셔플 후 카드를 뽑아보세요':'내담자 덱 · 실시간'}</div>
+    <div class="deck-lbl">${interactive?'정신을 집중해 카드를 셔플하고 뽑아보세요':'내담자 덱 · 실시간'}</div>
+    ${interactive?'<p class="immerse-msg" style="font-size:13px;margin:6px 0">손으로 카드를 만지듯, 천천히 셔플해보세요</p>':''}
     <div class="deck-stack${interactive?' ih':''}" id="deckStack">
       <div class="dshadow"></div><div class="dshadow"></div>
       <div class="dtop"><div class="cbf"><div class="cbstar">✦</div></div></div>
@@ -1694,7 +1762,8 @@ function buildDeckUI(interactive,alreadyDrawn){
       ${interactive?`<button class="shuf-btn" id="shufBtn">◈ 셔플</button>
       <button class="btn btn-gold btn-sm" id="drawBtn">카드 뽑기</button>
       <span class="draw-count" id="drawCount">${drawn}/${maxCards}장</span>`:''}
-    </div>`;
+    </div>
+    ${interactive?'<div class="shuffle-hint">마음이 준비되면 카드를 뽑아보세요</div>':''}`;
   if(interactive) setTimeout(()=>{
     const sb=$('shufBtn'),db2=$('drawBtn');
     if(sb) sb.onclick=doShuffle;
@@ -2275,5 +2344,59 @@ window.addEventListener('DOMContentLoaded',init);
   animation:creditglow 2.5s ease-in-out infinite;}
 </style>
 <div class="credit">made by choimina</div>
+<!-- 디스코드 버튼 -->
+<style>
+.discord-popup{display:none;flex-direction:column;gap:8px;align-items:flex-end;margin-bottom:8px}
+.discord-popup.open{display:flex}
+.discord-member{display:flex;align-items:center;gap:10px;background:rgba(88,101,242,.15);
+  border:1px solid rgba(88,101,242,.4);border-radius:24px;padding:8px 16px;
+  text-decoration:none;transition:background .15s;white-space:nowrap}
+.discord-member:hover{background:rgba(88,101,242,.28)}
+.discord-member-name{font-family:'Nanum Myeongjo',serif;font-size:14px;color:#c0c8ff;font-weight:700;letter-spacing:1px}
+.discord-member-hint{font-size:10px;color:rgba(192,200,255,.6);margin-left:4px}
+.discord-msg{background:rgba(10,10,30,.95);border:1px solid var(--border2);border-radius:10px;
+  padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.6;max-width:220px;text-align:right;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);}
+</style>
+
+<div class="discord-btn" id="discordBtn">
+  <!-- 멤버 팝업 -->
+  <div class="discord-popup" id="discordPopup">
+    <div class="discord-msg">💬 클릭 후 디스코드 대화로<br>상담 신청 메시지를 보내주시면<br>바로 상담하러 들어오겠습니다 ✦</div>
+    <a class="discord-member" href="https://discordapp.com/users/601282870396321805" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#8891f0"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      <span class="discord-member-name">왈순</span>
+    </a>
+    <a class="discord-member" href="https://discordapp.com/users/994182830450024488" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#8891f0"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      <span class="discord-member-name">제갈현지</span>
+    </a>
+    <a class="discord-member" href="https://discordapp.com/users/473850754457927707" target="_blank">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#8891f0"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      <span class="discord-member-name">쌀녀</span>
+    </a>
+  </div>
+  <!-- 디스코드 아이콘 버튼 -->
+  <div class="discord-icon" id="discordToggle" title="상담사에게 디스코드 DM 보내기" style="cursor:pointer">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+    </svg>
+  </div>
+</div>
+<script>
+(function(){
+  const toggle=document.getElementById('discordToggle');
+  const popup=document.getElementById('discordPopup');
+  if(!toggle||!popup)return;
+  toggle.onclick=function(e){
+    e.stopPropagation();
+    popup.classList.toggle('open');
+  };
+  document.addEventListener('click',function(){
+    popup.classList.remove('open');
+  });
+  popup.addEventListener('click',function(e){e.stopPropagation();});
+})();
+</script>
 </body>
 </html>
