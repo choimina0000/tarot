@@ -2870,9 +2870,47 @@ document.addEventListener('click',function(e){
   }
 });
 
-/* 마우스 글리터 */
+/* 마우스 글리터 + 사운드 */
 (function(){
-  const glitters=[];
+  // Web Audio API 초기화
+  let audioCtx=null;
+  function getAudioCtx(){
+    if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    return audioCtx;
+  }
+
+  // 글리터 사운드: 랜덤 고음 벨 소리
+  let lastSoundTime=0;
+  function playGlitterSound(){
+    const now=Date.now();
+    if(now-lastSoundTime<80) return; // 너무 자주 울리지 않게
+    lastSoundTime=now;
+    try{
+      const ctx=getAudioCtx();
+      if(ctx.state==='suspended') ctx.resume();
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      const pan=ctx.createStereoPanner();
+
+      // 랜덤 고음 (맑은 벨/크리스탈 음)
+      const notes=[2093,2349,2637,2794,3136,3520,3951,4186]; // C7~C8 범위
+      osc.frequency.value=notes[Math.floor(Math.random()*notes.length)];
+      osc.type='sine';
+
+      // 음량: 매우 작게, 빠르게 페이드
+      gain.gain.setValueAtTime(0,ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(.04+Math.random()*.03,ctx.currentTime+.01);
+      gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.25);
+
+      // 좌우 랜덤 패닝
+      pan.pan.value=(Math.random()-.5)*.8;
+
+      osc.connect(gain);gain.connect(pan);pan.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime+.25);
+    }catch(e){}
+  }
+
   document.addEventListener('mousemove',function(e){
     if(Math.random()>.35) return;
     const n=Math.floor(Math.random()*3)+1;
@@ -2894,6 +2932,8 @@ document.addEventListener('click',function(e){
       });
       setTimeout(()=>d.remove(),800);
     }
+    // 사운드 (글리터 생성될 때만)
+    playGlitterSound();
   });
 })();
 
