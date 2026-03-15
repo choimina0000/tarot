@@ -19,6 +19,22 @@
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
 #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+/* ── 세션 내 대기 패널 ── */
+.wait-panel{border-top:1px solid var(--border);flex-shrink:0;overflow:hidden;max-height:0;transition:max-height .3s ease}
+.wait-panel.open{max-height:220px}
+.wait-panel-hdr{padding:9px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:rgba(201,168,76,.05)}
+.wait-panel-hdr:hover{background:rgba(201,168,76,.09)}
+.wait-panel-title{font-size:10px;color:var(--gold);letter-spacing:2px;display:flex;align-items:center;gap:7px}
+.wait-panel-badge{background:var(--red);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;min-width:16px;text-align:center}
+.wait-panel-badge.zero{background:var(--border2);color:var(--text3)}
+.wait-panel-arrow{font-size:10px;color:var(--text3);transition:transform .3s}
+.wait-panel.open .wait-panel-arrow{transform:rotate(180deg)}
+.wait-panel-list{padding:6px 10px 10px;overflow-y:auto;max-height:150px;display:flex;flex-direction:column;gap:5px}
+.wait-panel-item{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-size:11px;color:var(--text2)}
+.wait-panel-item-name{font-size:12px;color:var(--text);margin-bottom:2px;font-weight:500}
+.wait-panel-item-q{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold2);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wait-panel-empty{font-size:11px;color:var(--text3);text-align:center;padding:12px;letter-spacing:1px}
+
 /* ── ADMIN ── */
 .admin-wrap{width:100%;max-width:860px;display:flex;flex-direction:column;gap:12px}
 .admin-hdr{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -521,7 +537,20 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
   <div class="sess-body">
     <div class="main-area" id="mainArea"></div>
     <div class="chat-col" id="chatCol">
-      <div class="chat-hdr">CHAT · 채팅</div>
+      <div class="chat-hdr" style="display:flex;align-items:center;justify-content:space-between">
+        <span>CHAT · 채팅</span>
+      </div>
+      <!-- 대기 패널 (상담사만 보임) -->
+      <div class="wait-panel hidden" id="waitPanel">
+        <div class="wait-panel-hdr" id="waitPanelHdr">
+          <div class="wait-panel-title">
+            ⏳ 대기 중인 내담자
+            <span class="wait-panel-badge zero" id="waitPanelBadge">0</span>
+          </div>
+          <span class="wait-panel-arrow">▼</span>
+        </div>
+        <div class="wait-panel-list" id="waitPanelList"></div>
+      </div>
       <div class="pq-bar hidden" id="pqBar">
         <div class="pq-lbl">CURRENT QUESTION</div>
         <div class="pq-txt" id="pqTxt"></div>
@@ -1179,7 +1208,11 @@ function enterSession(){
       $('sInfo').textContent=`상담사: ${names} · Room ${roomId}`;
     });
   }
-  if(myRole==='consultant') show('sAddQ');
+  if(myRole==='consultant'){
+    show('sAddQ');
+    show('waitPanel');
+    setupWaitPanel();
+  }
   if(_isJoined){show('sLeave');}else{hide('sLeave');}
 
   startSessionTimer();
@@ -1205,6 +1238,41 @@ function enterSession(){
 
 /* ─ 접속 상태 추적 (하트비트 방식 - 빠른 감지) ─ */
 let _hbInterval=null;
+
+function setupWaitPanel(){
+  const panel=$('waitPanel');
+  const hdr=$('waitPanelHdr');
+  const list=$('waitPanelList');
+  const badge=$('waitPanelBadge');
+  if(!panel) return;
+
+  // 토글
+  hdr.onclick=()=>panel.classList.toggle('open');
+
+  // 대기자 실시간 감시
+  db.ref(`${P}lobby/waiting`).on('value',snap=>{
+    const data=snap.val()||{};
+    const waiting=Object.keys(data).filter(k=>data[k].status==='waiting')
+      .sort((a,b)=>data[a].at-data[b].at);
+
+    badge.textContent=waiting.length;
+    badge.className='wait-panel-badge'+(waiting.length===0?' zero':'');
+
+    list.innerHTML='';
+    if(!waiting.length){
+      list.innerHTML='<div class="wait-panel-empty">대기 중인 내담자 없음</div>';
+      return;
+    }
+    waiting.forEach(k=>{
+      const d=data[k];
+      const ago=Math.floor((Date.now()-d.at)/60000);
+      const item=document.createElement('div');item.className='wait-panel-item';
+      item.innerHTML=`<div class="wait-panel-item-name">${esc(d.nick||'익명')} <span style="font-size:10px;color:var(--text3)">${d.age?d.age+'세':''} ${d.gender||''} · ${ago<1?'방금':ago+'분 전'}</span></div>
+        <div class="wait-panel-item-q">${esc(d.question||'질문 없음')}</div>`;
+      list.appendChild(item);
+    });
+  });
+}
 
 function setupPresence(){
   const presRef=db.ref(`${P}sessions/${roomId}/presence/client`);
