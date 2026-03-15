@@ -1493,7 +1493,8 @@ function listenChat(){
         const isMine=(m.role===myRole);
         el.className='msg '+(isMine?'msg-mine':'msg-other');
         const nm=document.createElement('div');nm.className='msg-name';
-        nm.textContent=m.nick||(m.role==='consultant'?'상담사':'내담자');
+        const roleLabel=m.role==='consultant'?'상담사':'내담자';
+        nm.textContent=roleLabel+' - '+(m.nick||roleLabel);
         el.appendChild(nm);
         const tx=document.createElement('div');tx.textContent=m.text;el.appendChild(tx);
         if(ts){const t=document.createElement('div');t.className='msg-time';t.textContent=ts;el.appendChild(t);}
