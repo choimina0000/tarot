@@ -1001,6 +1001,27 @@ function enterSession(){
   listenCards();
   listenChat();
   listenTyping();
+  setupPresence();
+}
+
+/* ─ 접속 상태 추적 ─ */
+function setupPresence(){
+  if(myRole==='client'){
+    // 내담자: 접속 표시 + 창 닫으면 자동 제거
+    const presRef=db.ref(`${P}sessions/${roomId}/presence/client`);
+    presRef.set({nick:myNick,online:true,ts:Date.now()});
+    presRef.onDisconnect().set({nick:myNick,online:false,ts:Date.now()});
+  } else {
+    // 상담사: 내담자 접속 상태 감시
+    db.ref(`${P}sessions/${roomId}/presence/client`).on('value',snap=>{
+      const data=snap.val();
+      if(!data) return;
+      if(data.online===false){
+        sendSysMsg('⚠️ 내담자가 대화방을 나갔습니다.');
+        notify('⚠️ 내담자가 나갔어요!',5000);
+      }
+    });
+  }
 }
 
 /* ─ META listener (round, maxCards, shuffleTs, status) ─ */
