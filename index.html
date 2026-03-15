@@ -568,6 +568,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
       <div class="chat-msgs" id="chatMsgs"></div>
       <div class="typing-ind hidden" id="typingInd">입력 중...</div>
       <div class="chat-in-wrap">
+        <span class="credit-inline">made by choimina</span>
         <textarea class="chat-in" id="chatIn" placeholder="메시지..."></textarea>
         <button class="send-btn" id="sendBtn">➤</button>
       </div>
@@ -2256,20 +2257,21 @@ function loadAdminSessions(){
 window.addEventListener('DOMContentLoaded',init);
 </script>
 <style>
-.credit{position:fixed;bottom:14px;right:18px;z-index:999;font-size:12px;
+.credit{position:fixed;bottom:16px;right:20px;z-index:999;font-size:12px;
   color:var(--gold2);letter-spacing:2px;
   font-family:'Cormorant Garamond',serif;font-style:italic;pointer-events:none;
-  text-shadow:0 0 10px rgba(201,168,76,.7),0 0 24px rgba(201,168,76,.4),0 0 40px rgba(201,168,76,.2);
+  text-shadow:0 0 10px rgba(201,168,76,.7),0 0 24px rgba(201,168,76,.4);
   animation:creditglow 2.5s ease-in-out infinite;}
 @keyframes creditglow{
   0%,100%{text-shadow:0 0 8px rgba(201,168,76,.6),0 0 20px rgba(201,168,76,.3);}
-  50%{text-shadow:0 0 14px rgba(201,168,76,.9),0 0 30px rgba(201,168,76,.5),0 0 50px rgba(201,168,76,.25);}
+  50%{text-shadow:0 0 16px rgba(201,168,76,1),0 0 32px rgba(201,168,76,.6),0 0 50px rgba(201,168,76,.3);}
 }
-/* 채팅탭 활성화(모바일) 시 입력창 옆으로 */
-@media(max-width:660px){
-  .credit{bottom:60px;right:8px;font-size:10px;}
-  .chat-in-wrap{position:relative;}
-}
+/* credit: 항상 입력창 안에 인라인으로 표시, fixed 버전은 숨김 */
+.credit{display:none;}
+.credit-inline{display:flex;align-items:center;font-size:11px;color:var(--gold3);
+  font-family:'Cormorant Garamond',serif;font-style:italic;white-space:nowrap;flex-shrink:0;
+  text-shadow:0 0 8px rgba(201,168,76,.5);letter-spacing:1px;padding:0 6px;
+  animation:creditglow 2.5s ease-in-out infinite;}
 </style>
 <div class="credit">made by choimina</div>
 </body>
