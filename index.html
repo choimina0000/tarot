@@ -88,6 +88,9 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 .btn-gold:hover{background:linear-gradient(135deg,rgba(201,168,76,.35),rgba(100,80,30,.22))}
 .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
 .btn-ghost:hover{border-color:var(--border);color:var(--text)}
+.btn-blue{background:rgba(74,128,212,.12);border:1px solid var(--blue3);color:var(--blue2)}
+.btn-blue:hover{background:rgba(74,128,212,.22)}
+.active-session-card:hover{border-color:var(--blue2)!important;}
 .btn-red{background:rgba(200,64,96,.12);border:1px solid #401020;color:var(--red)}
 .btn-red:hover{background:rgba(200,64,96,.22)}
 .btn:disabled{opacity:.38;cursor:not-allowed}
@@ -462,7 +465,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
       </select>
       <span style="font-size:10px;color:var(--text3)">내담자당 최대 뽑기 수</span>
     </div>
-    <div class="lobby-list-label">대기 중인 내담자</div>
+    <div class="lobby-list-label" id="lobbyListLabel">대기 중인 내담자 · 진행중 상담</div>
     <div class="lobby-list" id="lobbyList">
       <div class="lobby-empty" id="lobbyEmpty">대기 중인 내담자가 없어요<br><span style="font-size:10px;opacity:.5">내담자가 신청하면 여기에 나타나요</span></div>
     </div>
@@ -566,10 +569,15 @@ const firebaseConfig = {
    PASSWORD (obfuscated)
 ═══════════════════════════════ */
 // Do not modify — verification key
-const _K = 'a01DUWgwV1lrRldi';
-function _ck(s){try{return s.length===9&&btoa([...btoa(s)].reverse().join(''))===_K;}catch(e){return false;}}
-const _AK = 'eGtqTjBJVFk=';
-function _ack(s){try{return s.length===6&&btoa([...btoa(s)].reverse().join(''))===_AK;}catch(e){return false;}}
+// 비밀번호 검증 (SHA-256, 역산 불가)
+async function _sha256(s){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+const _KH='e5ba97d048e5d6515499dd0efcc3e0ab3a1bba8745a020d00d4fc828d7152994';
+const _AKH='7351d6202a1263e796ace95a038a8b56c1a406f56f9a911dc0ad97d8cd0c6139';
+async function _ck(s){return(await _sha256(s))===_KH;}
+async function _ack(s){return(await _sha256(s))===_AKH;}
 
 /* ═══════════════════════════════
    DECK + IMAGES
@@ -858,8 +866,7 @@ function setupRoleButtons(){
       if(_adminTap>=5){
         _adminTap=0;
         const pw=prompt('관리자 코드를 입력하세요');
-        if(_ack(pw)){enterAdmin();}
-        else if(pw!==null) alert('코드가 틀렸습니다');
+        if(pw!==null) _ack(pw).then(ok=>{if(ok)enterAdmin();else alert('코드가 틀렸습니다');});
       }
     });
   }
@@ -895,19 +902,20 @@ function setupRoleButtons(){
   });
 }
 
-function checkPw(){
+async function checkPw(){
   const v=$('pwInput').value;
-  if(_ck(v)){
+  $('pwBtn').disabled=true;
+  const ok=await _ck(v);
+  if(ok){
     hide('pwOverlay');hide('pwErr');
     $('pwInput').value='';
+    $('pwBtn').disabled=false;
     showScreen('scrCSetup');
     setTimeout(()=>$('cNick').focus(),80);
   } else {
     show('pwErr');
     $('pwInput').value='';
     $('pwInput').focus();
-    // Lock for 1 second after wrong attempt
-    $('pwBtn').disabled=true;
     setTimeout(()=>$('pwBtn').disabled=false,1000);
   }
 }
@@ -926,14 +934,33 @@ function enterLobby(){
   ref.set({nick,at:Date.now()});
   ref.onDisconnect().remove();
 
-  db.ref(`${P}lobby/waiting`).on('value',snap=>{
-    const data=snap.val()||{};
-    const waiting=Object.keys(data).filter(k=>data[k].status==='waiting');
-    $('lobbyEmpty').style.display=waiting.length?'none':'block';
-    $('lobbyList').querySelectorAll('.client-card').forEach(e=>e.remove());
-    waiting.sort((a,b)=>data[a].at-data[b].at).forEach(k=>{
-      $('lobbyList').appendChild(makeClientCard(k,data[k]));
+  function refreshLobby(waitingData, sessionsData){
+    const waiting=Object.keys(waitingData).filter(k=>waitingData[k].status==='waiting');
+    const active=Object.keys(sessionsData||{}).filter(k=>(sessionsData[k].status==='active'));
+    const total=waiting.length+active.length;
+    $('lobbyEmpty').style.display=total?'none':'block';
+    $('lobbyList').querySelectorAll('.client-card,.active-session-card').forEach(e=>e.remove());
+
+    // 대기 내담자
+    waiting.sort((a,b)=>waitingData[a].at-waitingData[b].at).forEach(k=>{
+      $('lobbyList').appendChild(makeClientCard(k,waitingData[k]));
     });
+
+    // 진행중 상담 (난입 가능)
+    active.forEach(rid=>{
+      const s=sessionsData[rid];
+      $('lobbyList').appendChild(makeActiveSessionCard(rid,s));
+    });
+  }
+
+  let _waitingCache={},_sessionsCache={};
+  db.ref(`${P}lobby/waiting`).on('value',snap=>{
+    _waitingCache=snap.val()||{};
+    refreshLobby(_waitingCache,_sessionsCache);
+  });
+  db.ref(`${P}sessions`).on('value',snap=>{
+    _sessionsCache=snap.val()||{};
+    refreshLobby(_waitingCache,_sessionsCache);
   });
 
   db.ref(`${P}lobby/consultants`).on('value',snap=>{
@@ -972,6 +999,44 @@ function makeClientCard(key,d){
   return card;
 }
 
+function makeActiveSessionCard(rid,s){
+  const card=document.createElement('div');card.className='active-session-card';
+  card.style.cssText='background:var(--card-bg);border:1px solid var(--blue3);border-radius:11px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;transition:border-color .2s;margin-top:0';
+  const cname=(s.client||{}).nick||'알 수 없음';
+  const connames=Object.values(s.consultants||{}).map(c=>c.nick).join(', ')||s.consultantNick||'알 수 없음';
+  const cards_count=Object.keys(((s.rounds||{})[s.round||0]||{}).cards||{}).length;
+  const rnd=(s.round||0)+1;
+  card.innerHTML=`
+    <div style="width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--blue3);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">💬</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:500;color:var(--blue2);margin-bottom:2px">상담 중 · ${esc(cname)}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:5px">상담사: ${esc(connames)} · Round ${rnd} · 카드 ${cards_count}장</div>
+      <div style="font-size:12px;font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${esc((s.client||{}).question||'질문 없음')}
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-blue btn-sm" style="border-color:var(--blue3);color:var(--blue2);font-size:11px;padding:6px 14px" data-rid="${rid}">⚡ 난입</button>
+    </div>`;
+  card.querySelector('[data-rid]').onclick=()=>joinSession(rid,s);
+  return card;
+}
+
+async function joinSession(rid,s){
+  if(!confirm(`${(s.client||{}).nick||'내담자'}님 상담에 난입할까요?
+현재 상담사: ${Object.values(s.consultants||{}).map(c=>c.nick).join(', ')||s.consultantNick||'없음'}`))return;
+  roomId=rid;
+  maxCards=s.maxCards||3;
+  currentRound=s.round||0;
+  // 상담사 목록에 나를 추가
+  await db.ref(`${P}sessions/${rid}/consultants/${myKey}`).set({nick:myNick,joinedAt:Date.now()});
+  db.ref(`${P}lobby/consultants/${myKey}`).remove();
+  saveState('consultant',myNick,rid);
+  showScreen('scrSession');
+  enterSession();
+  sendSysMsg(`✦ 상담사 ${myNick}님이 상담에 참여했어요.`);
+}
+
 async function startWith(clientKey,clientData){
   const maxC=parseInt($('maxCardsSel').value)||3;
   const ref=db.ref(`${P}lobby/waiting/${clientKey}/status`);
@@ -984,6 +1049,7 @@ async function startWith(clientKey,clientData){
   await db.ref(`${P}sessions/${roomId}`).set({
     status:'active',round:0,shuffleTs:0,maxCards:maxC,createdAt:Date.now(),
     consultantKey:myKey,consultantNick:myNick,clientKey,
+    consultants:{[myKey]:{nick:myNick,joinedAt:Date.now()}},
     client:{nick:clientData.nick,age:clientData.age||'',gender:clientData.gender||'',question:clientData.question||''},
   });
   await db.ref(`${P}sessions/${roomId}/rounds/0`).set({question:clientData.question||'',ts:Date.now()});
@@ -1085,6 +1151,14 @@ function enterSession(){
   showScreen('scrSession');
   $('sDot').classList.remove('off');
   $('sInfo').textContent=(myRole==='consultant'?'상담사':'내담자')+' · '+myNick+' · Room '+roomId;
+  // 상담사 목록 실시간 표시
+  if(myRole==='consultant'){
+    db.ref(`${P}sessions/${roomId}/consultants`).on('value',snap=>{
+      const cons=snap.val()||{};
+      const names=Object.values(cons).map(c=>c.nick).join(', ');
+      $('sInfo').textContent=`상담사: ${names} · Room ${roomId}`;
+    });
+  }
   if(myRole==='consultant') show('sAddQ');
 
   startSessionTimer();
@@ -1750,6 +1824,7 @@ function endSession(){
    ADMIN
 ═══════════════════════════════ */
 let _adminInterval=null;
+const _adminOpen=new Set(); // 펼쳐진 세션 ID 기억
 
 function enterAdmin(){
   showScreen('scrAdmin');
@@ -1791,7 +1866,7 @@ function makeAdminSession(rid,s){
       ${isActive?'상담 중':'종료됨'}
     </span>`;
 
-  const body=document.createElement('div');body.className='admin-sess-body';
+  const body=document.createElement('div');body.className='admin-sess-body'+(_adminOpen.has(rid)?' open':'');
 
   // 내담자 정보
   const cli=s.client||{};
@@ -1867,7 +1942,11 @@ function makeAdminSession(rid,s){
     body.appendChild(chatSec);
   }
 
-  hdr.onclick=()=>body.classList.toggle('open');
+  hdr.onclick=()=>{
+    const isOpen=body.classList.toggle('open');
+    if(isOpen) _adminOpen.add(rid);
+    else _adminOpen.delete(rid);
+  };
   el.appendChild(hdr);el.appendChild(body);
   return el;
 }
