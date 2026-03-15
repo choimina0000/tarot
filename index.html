@@ -20,20 +20,27 @@ html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
 #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
 /* ── 세션 내 대기 패널 ── */
-.wait-panel{border-top:1px solid var(--border);flex-shrink:0;overflow:hidden;max-height:0;transition:max-height .3s ease}
-.wait-panel.open{max-height:220px}
-.wait-panel-hdr{padding:9px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:rgba(201,168,76,.05)}
-.wait-panel-hdr:hover{background:rgba(201,168,76,.09)}
-.wait-panel-title{font-size:10px;color:var(--gold);letter-spacing:2px;display:flex;align-items:center;gap:7px}
-.wait-panel-badge{background:var(--red);color:#fff;border-radius:10px;font-size:9px;padding:1px 6px;min-width:16px;text-align:center}
-.wait-panel-badge.zero{background:var(--border2);color:var(--text3)}
-.wait-panel-arrow{font-size:10px;color:var(--text3);transition:transform .3s}
-.wait-panel.open .wait-panel-arrow{transform:rotate(180deg)}
-.wait-panel-list{padding:6px 10px 10px;overflow-y:auto;max-height:150px;display:flex;flex-direction:column;gap:5px}
-.wait-panel-item{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-size:11px;color:var(--text2)}
-.wait-panel-item-name{font-size:12px;color:var(--text);margin-bottom:2px;font-weight:500}
-.wait-panel-item-q{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold2);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wait-panel{border-top:1px solid var(--border);flex-shrink:0}
+.wait-panel-hdr{padding:10px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  background:rgba(201,168,76,.05);transition:background .15s}
+.wait-panel-hdr:hover{background:rgba(201,168,76,.12)}
+.wait-panel-hdr.has-waiting{background:rgba(200,64,60,.1);border-bottom:1px solid rgba(200,64,60,.2);animation:wpulse 2s ease-in-out infinite}
+@keyframes wpulse{0%,100%{background:rgba(200,64,60,.1)}50%{background:rgba(200,64,60,.18)}}
+.wait-panel-title{font-size:11px;color:var(--gold);letter-spacing:2px;display:flex;align-items:center;gap:7px;font-weight:500}
+.wait-panel-badge{background:var(--red);color:#fff;border-radius:10px;font-size:10px;font-weight:700;
+  padding:2px 8px;min-width:20px;text-align:center;box-shadow:0 0 8px rgba(200,64,60,.5)}
+.wait-panel-badge.zero{background:var(--border2);color:var(--text3);box-shadow:none}
+.wait-panel-arrow{font-size:10px;color:var(--text3);transition:transform .25s}
+.wait-panel-list{overflow:hidden;max-height:0;transition:max-height .3s ease}
+.wait-panel-list.open{max-height:200px;overflow-y:auto}
+.wait-panel-list-inner{padding:6px 10px 10px;display:flex;flex-direction:column;gap:5px}
+.wait-panel-item{background:var(--bg2);border:1px solid var(--border2);border-radius:7px;padding:9px 12px}
+.wait-panel-item-name{font-size:13px;color:var(--text);margin-bottom:3px;font-weight:500}
+.wait-panel-item-meta{font-size:10px;color:var(--text2);margin-bottom:3px}
+.wait-panel-item-q{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold2);font-size:12px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wait-panel-empty{font-size:11px;color:var(--text3);text-align:center;padding:12px;letter-spacing:1px}
+.wait-panel-arrow.open{transform:rotate(180deg)}
 
 /* ── ADMIN ── */
 .admin-wrap{width:100%;max-width:860px;display:flex;flex-direction:column;gap:12px}
@@ -547,9 +554,11 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
             ⏳ 대기 중인 내담자
             <span class="wait-panel-badge zero" id="waitPanelBadge">0</span>
           </div>
-          <span class="wait-panel-arrow">▼</span>
+          <span class="wait-panel-arrow" id="waitPanelArrow">▼</span>
         </div>
-        <div class="wait-panel-list" id="waitPanelList"></div>
+        <div class="wait-panel-list" id="waitPanelList">
+          <div class="wait-panel-list-inner" id="waitPanelInner"></div>
+        </div>
       </div>
       <div class="pq-bar hidden" id="pqBar">
         <div class="pq-lbl">CURRENT QUESTION</div>
@@ -1287,34 +1296,51 @@ let _hbInterval=null;
 function setupWaitPanel(){
   const panel=$('waitPanel');
   const hdr=$('waitPanelHdr');
-  const list=$('waitPanelList');
+  const listWrap=$('waitPanelList');
+  const inner=$('waitPanelInner');
   const badge=$('waitPanelBadge');
-  if(!panel) return;
+  const arrow=$('waitPanelArrow');
+  if(!panel||!hdr) return;
 
-  // 토글
-  hdr.onclick=()=>panel.classList.toggle('open');
+  let isOpen=false;
+  hdr.onclick=()=>{
+    isOpen=!isOpen;
+    listWrap.classList.toggle('open',isOpen);
+    arrow.classList.toggle('open',isOpen);
+  };
 
-  // 대기자 실시간 감시
   db.ref(`${P}lobby/waiting`).on('value',snap=>{
     const data=snap.val()||{};
-    const waiting=Object.keys(data).filter(k=>data[k].status==='waiting')
+    const waiting=Object.keys(data)
+      .filter(k=>data[k].status==='waiting')
       .sort((a,b)=>data[a].at-data[b].at);
 
-    badge.textContent=waiting.length;
-    badge.className='wait-panel-badge'+(waiting.length===0?' zero':'');
+    const cnt=waiting.length;
+    badge.textContent=cnt;
+    badge.className='wait-panel-badge'+(cnt===0?' zero':'');
+    hdr.className='wait-panel-hdr'+(cnt>0?' has-waiting':'');
 
-    list.innerHTML='';
-    if(!waiting.length){
-      list.innerHTML='<div class="wait-panel-empty">대기 중인 내담자 없음</div>';
+    // 대기자 생기면 자동으로 펼침
+    if(cnt>0&&!isOpen){
+      isOpen=true;
+      listWrap.classList.add('open');
+      arrow.classList.add('open');
+    }
+
+    inner.innerHTML='';
+    if(!cnt){
+      inner.innerHTML='<div class="wait-panel-empty">대기 중인 내담자 없음</div>';
       return;
     }
     waiting.forEach(k=>{
       const d=data[k];
       const ago=Math.floor((Date.now()-d.at)/60000);
       const item=document.createElement('div');item.className='wait-panel-item';
-      item.innerHTML=`<div class="wait-panel-item-name">${esc(d.nick||'익명')} <span style="font-size:10px;color:var(--text3)">${d.age?d.age+'세':''} ${d.gender||''} · ${ago<1?'방금':ago+'분 전'}</span></div>
+      item.innerHTML=`
+        <div class="wait-panel-item-name">${esc(d.nick||'익명')}</div>
+        <div class="wait-panel-item-meta">${d.age?d.age+'세 · ':''}${d.gender||''} · ${ago<1?'방금 들어옴':ago+'분 대기 중'}</div>
         <div class="wait-panel-item-q">${esc(d.question||'질문 없음')}</div>`;
-      list.appendChild(item);
+      inner.appendChild(item);
     });
   });
 }
