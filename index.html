@@ -856,7 +856,6 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
       <div class="chat-msgs" id="chatMsgs"></div>
       <div class="typing-ind hidden" id="typingInd">입력 중...</div>
       <div class="chat-in-wrap">
-        <span class="credit-inline">made by choimina</span>
         <textarea class="chat-in" id="chatIn" placeholder="메시지..."></textarea>
         <button class="send-btn" id="sendBtn">➤</button>
       </div>
@@ -1513,7 +1512,9 @@ const myKey=(()=>{let k=localStorage.getItem('t_uid');if(!k){k='u'+Date.now().to
 let myRole='',myNick='',roomId='',currentRound=0,localDeck=[],drawnCount=0,maxCards=3,prevShufTs=0,_isJoined=false;
 let _spreadActive=false,_spreadCards=[],_spreadDrawn=0;
 let _inactiveTimer=null,_lastActivity=0;
-const INACTIVE_MS=8*60*1000; // 8분
+const INACTIVE_MS=8*60*1000; // 8분 (대기방 만료용)
+const SESSION_INACTIVE_MS=3*60*1000; // 3분 (세션 비활성 종료용)
+const SESSION_WARN_MS=2*60*1000; // 2분 (1분 전 경고)
 let _sessionListeners=[]; // 세션 리스너 추적 (나갈 때 정리)
 let _waitingCache={},_sessionsCache={}; // 대기실 캐시
 let typingTimer=null,unreadChat=0,activeTab='card';
@@ -1665,6 +1666,30 @@ function enterLobby(){
   ref.onDisconnect().remove();
 
   function refreshLobby(waitingData, sessionsData){
+    const now=Date.now();
+
+    // 8분 이상 대기 중인 내담자 자동 제거 (서버사이드 정리)
+    Object.keys(waitingData).forEach(k=>{
+      if(waitingData[k].status==='waiting' && waitingData[k].at && now-waitingData[k].at>INACTIVE_MS){
+        db.ref(`${P}lobby/waiting/${k}`).remove();
+        delete waitingData[k];
+      }
+    });
+
+    // 3분 이상 비활성 세션 자동 종료 (lastActivity 기준)
+    Object.keys(sessionsData||{}).forEach(rid=>{
+      const s=sessionsData[rid];
+      if(s.status==='active'){
+        const lastAct=s.lastActivity||s.createdAt||0;
+        if(lastAct && now-lastAct>SESSION_INACTIVE_MS){
+          db.ref(`${P}sessions/${rid}/status`).set('ended');
+          db.ref(`${P}sessions/${rid}/endedAt`).set(now);
+          setTimeout(()=>db.ref(`${P}sessions/${rid}`).remove().catch(()=>{}),3000);
+          delete sessionsData[rid];
+        }
+      }
+    });
+
     const waiting=Object.keys(waitingData).filter(k=>waitingData[k].status==='waiting');
     const active=Object.keys(sessionsData||{}).filter(k=>(sessionsData[k].status==='active'));
     const total=waiting.length+active.length;
@@ -1812,8 +1837,22 @@ function enterWaiting(){
 
   startWaitContent();
 
+  // 8분 대기 자동 만료
+  const _waitExpireTimer=setTimeout(()=>{
+    ref.once('value').then(snap=>{
+      const d=snap.val();
+      if(d&&d.status==='waiting'){
+        ref.remove();
+        stopWaitContent();
+        notify('⏰ 8분간 매칭되지 않아 대기가 자동 취소됐어요.',5000);
+        showScreen('scrRole');
+      }
+    });
+  },INACTIVE_MS);
+
   db.ref(`${P}lobby/waiting/${myKey}/sessionId`).on('value',snap=>{
     if(snap.val()){
+      clearTimeout(_waitExpireTimer);
       roomId=snap.val();
       saveState('client',myNick,roomId);
       stopWaitContent();
@@ -1823,6 +1862,7 @@ function enterWaiting(){
   });
 
   $('waitCancelBtn').onclick=()=>{
+    clearTimeout(_waitExpireTimer);
     ref.remove();
     stopWaitContent();
     showScreen('scrRole');
@@ -1904,40 +1944,57 @@ function resetActivityTimer(){
   _lastActivity=Date.now();
   clearTimeout(_inactiveTimer);
   clearTimeout(_warnTimer);
-  if(myRole!=='consultant'||_isJoined) return;
-  // 7분 후 경고
+  // 세션에 있는 모든 역할(상담사/내담자)에게 적용
+  if(!roomId) return;
+  // Firebase에 마지막 활동 시간 기록 (다른 클라이언트도 확인 가능)
+  db.ref(`${P}sessions/${roomId}/lastActivity`).set(Date.now()).catch(()=>{});
+  // 2분 후 경고 (종료 1분 전)
   _warnTimer=setTimeout(()=>{
-    if(Date.now()-_lastActivity>=7*60*1000-1000){
-      notify('⏰ 1분 후 비활성으로 자동 종료됩니다.',8000);
+    if(Date.now()-_lastActivity>=SESSION_WARN_MS-1000){
+      notify('⏰ 1분 후 비활성으로 자동 종료됩니다.',10000);
       sendSysMsg('⚠️ 1분간 활동이 없으면 자동 종료됩니다. 계속하려면 채팅을 입력해주세요.');
     }
-  },7*60*1000);
-  // 8분 후 자동 종료
+  },SESSION_WARN_MS);
+  // 3분 후 자동 종료
   _inactiveTimer=setTimeout(()=>{
-    if(Date.now()-_lastActivity>=INACTIVE_MS-1000){
+    if(Date.now()-_lastActivity>=SESSION_INACTIVE_MS-1000){
       autoEndSession();
     }
-  },INACTIVE_MS);
+  },SESSION_INACTIVE_MS);
 }
 
 function autoEndSession(){
   detachSessionListeners();
   clearTimeout(_inactiveTimer);
+  clearTimeout(_warnTimer);
   stopSessionTimer();
-  sendSysMsg('⚠️ 8분간 활동이 없어 상담이 자동 종료됩니다.');
+  sendSysMsg('⚠️ 3분간 활동이 없어 상담이 자동 종료됩니다.');
   notify('⏰ 비활성으로 자동 종료됩니다.',4000);
   db.ref(`${P}sessions/${roomId}/status`).set('ended');
   db.ref(`${P}sessions/${roomId}/endedAt`).set(Date.now());
+  const wasRole=myRole;
+  const wasNick=myNick;
   setTimeout(()=>{
     deleteSessionData().then(()=>{
       clearState();
-      notify('자동 종료됐어요. 대기실로 이동합니다.');
-      setTimeout(()=>{
-        roomId='';currentRound=0;_flipped.clear();
-        showScreen('scrLobby');
-        db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
-        db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
-      },800);
+      document.body.classList.remove('in-session');
+      if(wasRole==='consultant'){
+        notify('자동 종료됐어요. 대기실로 이동합니다.');
+        setTimeout(()=>{
+          roomId='';currentRound=0;_flipped.clear();
+          myRole='consultant';myNick=wasNick;
+          showScreen('scrLobby');
+          $('lobbyMyNick').textContent=wasNick;
+          db.ref(`${P}lobby/consultants/${myKey}`).set({nick:wasNick,at:Date.now()});
+          db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
+        },800);
+      } else {
+        notify('자동 종료됐어요. 처음 화면으로 이동합니다.');
+        setTimeout(()=>{
+          roomId='';currentRound=0;_flipped.clear();
+          showScreen('scrRole');
+        },800);
+      }
     });
   },2000);
 }
@@ -2500,6 +2557,10 @@ function showSpread(){
   if(_spreadActive) return;
   if(playShuffleSound) playShuffleSound();
 
+  // 이전 스프레드 잔여 데이터 초기화
+  _selectedSpreadCards=[];
+  _spreadWritten=false;
+
   // 이미 뽑힌 카드 수 확인
   db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).once('value').then(snap=>{
     const existing=snap.val()||{};
@@ -2565,12 +2626,20 @@ function _onSpreadEsc(e){
 }
 
 let _selectedSpreadCards=[];
+let _spreadWritten=false; // Firebase 저장 완료 플래그
 
 function selectSpreadCard(card,el){
   if(!_spreadActive)return;
+  // 이미 선택된 카드면 무시
+  if(el.dataset.selected==='1')return;
+  // 이미 충분히 뽑았으면 무시
+  if(_spreadDrawn>=maxCards)return;
 
   el.style.pointerEvents='none';
   el.dataset.selected='1';
+
+  // 우웅 효과음
+  if(window.playCardPickSound) playCardPickSound();
 
   // --base-transform에 translateY를 포함시켜서 hover !important와 충돌 방지
   const rotMatch=(el.style.getPropertyValue('--base-transform')||el.style.transform).match(/rotate\([^)]+\)/);
@@ -2619,10 +2688,17 @@ function selectSpreadCard(card,el){
 
     // Phase 2: 페이드아웃 후 → 새 쇼케이스 요소로 앞면 일렬 강조
     setTimeout(()=>{
+      // 중복 저장 방지
+      if(_spreadWritten) return;
+      _spreadWritten=true;
+
+      // 선택된 카드 스냅샷 (이후 배열 변경 영향 차단)
+      const pickedCards=_selectedSpreadCards.map(s=>s.card);
+
       // 기존 스프레드 카드 DOM 제거
       document.querySelectorAll('.spread-card').forEach(c=>c.remove());
 
-      const total=_selectedSpreadCards.length;
+      const total=pickedCards.length;
       const cw=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--cw'))||120;
       const ch=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ch'))||205;
       const gap=22;
@@ -2631,8 +2707,9 @@ function selectSpreadCard(card,el){
       const centerY=(window.innerHeight-ch)/2;
 
       const showcaseEls=[];
+      const writeTs=Date.now(); // 저장 시점 고정
 
-      _selectedSpreadCards.forEach(({card},i)=>{
+      pickedCards.forEach((card,i)=>{
         const sc=document.createElement('div');
         sc.className='spread-showcase';
         sc.style.cssText=`position:fixed;z-index:420;
@@ -2647,12 +2724,11 @@ function selectSpreadCard(card,el){
         document.body.appendChild(sc);
         showcaseEls.push(sc);
 
-        // Firebase 저장
-        setTimeout(()=>{
-          db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/c${Date.now()+i*3}`).set({id:card.id,ts:Date.now()+i*3});
-          sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
-          if(i===total-1) sendSysMsg('✦ 카드 선택이 완료되었습니다!');
-        }, i*100+200);
+        // Firebase 저장 (고정 타임스탬프 사용)
+        const cardKey='c'+(writeTs+i*3);
+        db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards/${cardKey}`).set({id:card.id,ts:writeTs+i*3});
+        sendSysMsg(`✦ ${card.kr} 카드가 뽑혔습니다`);
+        if(i===total-1) sendSysMsg('✦ 카드 선택이 완료되었습니다!');
       });
 
       // 페이드인
@@ -2681,6 +2757,7 @@ function selectSpreadCard(card,el){
 
 function closeSpread(){
   _spreadActive=false;
+  _selectedSpreadCards=[];
   document.removeEventListener('keydown',_onSpreadEsc);
   // 모든 스프레드 요소 제거
   const ov=document.getElementById('spreadOverlay');
@@ -3420,6 +3497,46 @@ document.addEventListener('click',function(e){
     }catch(e){}
   };
 
+  // 카드 픽: 우웅 공명 (저음 스윕 + 부드러운 울림)
+  window.playCardPickSound=function(){
+    if(!_sfxOn)return;
+    try{
+      const c=sctx(),now=c.currentTime;
+      // 저음 우웅 (freq sweep up)
+      const bass=c.createOscillator(),bg=c.createGain();
+      bass.type='sine';
+      bass.frequency.setValueAtTime(65,now);
+      bass.frequency.exponentialRampToValueAtTime(120,now+.25);
+      bass.frequency.exponentialRampToValueAtTime(80,now+.6);
+      bg.gain.setValueAtTime(0,now);
+      bg.gain.linearRampToValueAtTime(.12*_sfxVol,now+.06);
+      bg.gain.setValueAtTime(.12*_sfxVol,now+.15);
+      bg.gain.exponentialRampToValueAtTime(.0001,now+.7);
+      bass.connect(bg);bg.connect(c.destination);
+      bass.start(now);bass.stop(now+.8);
+      // 중음 공명 (따뜻한 울림)
+      const mid=c.createOscillator(),mg=c.createGain();
+      mid.type='sine';
+      mid.frequency.setValueAtTime(160,now+.02);
+      mid.frequency.exponentialRampToValueAtTime(200,now+.2);
+      mid.frequency.exponentialRampToValueAtTime(150,now+.5);
+      mg.gain.setValueAtTime(0,now+.02);
+      mg.gain.linearRampToValueAtTime(.06*_sfxVol,now+.08);
+      mg.gain.exponentialRampToValueAtTime(.0001,now+.55);
+      mid.connect(mg);mg.connect(c.destination);
+      mid.start(now+.02);mid.stop(now+.6);
+      // 서브 하모닉 진동 (우웅 체감)
+      const sub=c.createOscillator(),sg=c.createGain();
+      sub.type='sine';
+      sub.frequency.value=42;
+      sg.gain.setValueAtTime(0,now);
+      sg.gain.linearRampToValueAtTime(.09*_sfxVol,now+.04);
+      sg.gain.exponentialRampToValueAtTime(.0001,now+.45);
+      sub.connect(sg);sg.connect(c.destination);
+      sub.start(now);sub.stop(now+.5);
+    }catch(e){}
+  };
+
   // 셔플 사운드: 카드 넘기는 부스럭 소리 (노이즈 버스트)
   window.playShuffleSound=function(){
     if(!_sfxOn)return;
@@ -3666,7 +3783,7 @@ window.addEventListener('DOMContentLoaded',init);
   text-shadow:0 0 8px rgba(201,168,76,.5);letter-spacing:1px;padding:0 6px;
   animation:creditglow 2.5s ease-in-out infinite;}
 </style>
-<div class="credit">made by choimina</div>
+<div class="credit">made by mina·sarah·hyunji</div>
 <!-- 디스코드 버튼 -->
 <style>
 .discord-popup{display:none;flex-direction:column;gap:8px;align-items:flex-end;margin-bottom:8px}
