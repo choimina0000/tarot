@@ -629,6 +629,24 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 .expired-title{font-family:'Cinzel',serif;font-size:18px;color:var(--text2);letter-spacing:3px}
 .expired-desc{font-size:12px;color:var(--text3);letter-spacing:1px;line-height:1.8}
 
+/* 카드 호버 말풍선 */
+.card-tooltip{position:fixed;z-index:600;pointer-events:none;
+  background:rgba(8,8,30,.95);border:1px solid rgba(201,168,76,.5);border-radius:10px;
+  padding:12px 15px;max-width:260px;backdrop-filter:blur(12px);
+  box-shadow:0 4px 24px rgba(0,0,0,.6),0 0 20px rgba(201,168,76,.1);
+  opacity:0;transition:opacity .18s ease;transform:translate(16px,-50%);}
+.card-tooltip.show{opacity:1;}
+.card-tooltip-name{font-family:'Cinzel',serif;font-size:13px;color:var(--gold2);letter-spacing:1.5px;margin-bottom:2px;}
+.card-tooltip-kr{font-size:11px;color:var(--text2);letter-spacing:1px;margin-bottom:8px;}
+.card-tooltip-meaning{font-size:12px;color:var(--text2);line-height:1.7;}
+.card-tooltip-comment{margin-top:8px;padding-top:7px;border-top:1px solid rgba(201,168,76,.25);
+  font-family:'Cormorant Garamond',serif;font-style:italic;font-size:12px;color:var(--gold2);line-height:1.6;}
+.card-tooltip-comment-lbl{font-size:9px;color:var(--gold3);letter-spacing:2px;margin-bottom:3px;font-family:'Noto Sans KR',sans-serif;font-style:normal;}
+.card-tooltip::before{content:'';position:absolute;left:-6px;top:50%;transform:translateY(-50%);
+  border:6px solid transparent;border-right-color:rgba(201,168,76,.5);}
+.card-tooltip.flip-left::before{left:auto;right:-6px;
+  border-right-color:transparent;border-left-color:rgba(201,168,76,.5);}
+
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
@@ -2347,7 +2365,16 @@ function buildCompletionView(cks,cards,roundNum){
     ci.appendChild(back);ci.appendChild(front);
     ccw.appendChild(numEl);ccw.appendChild(ci);
     ccw.onclick=()=>revealCard(card,cards[k],k,roundNum);
-    ccw.addEventListener('mouseenter',()=>revealCard(card,cards[k],k,roundNum));
+    // 말풍선 툴팁
+    ccw.addEventListener('mouseenter',()=>{
+      showCardTooltip(card,cards[k]);
+    });
+    ccw.addEventListener('mousemove',(e)=>{
+      moveCardTooltip(e.clientX,e.clientY);
+    });
+    ccw.addEventListener('mouseleave',()=>{
+      hideCardTooltip();
+    });
     cwrap.appendChild(ccw);
 
     const lbl=document.createElement('div');lbl.className='completion-lbl';lbl.textContent=card.kr;
@@ -2501,7 +2528,16 @@ function makeCardEl(card,cardData,cardKey,roundNum,alreadyFlipped,cardNum){
   }
   const cw=document.createElement('div');cw.className='cw';
   cw.onclick=()=>revealCard(card,cardData,cardKey,roundNum);
-  cw.addEventListener('mouseenter',()=>revealCard(card,cardData,cardKey,roundNum));
+  // 말풍선 툴팁
+  cw.addEventListener('mouseenter',()=>{
+    showCardTooltip(card,cardData);
+  });
+  cw.addEventListener('mousemove',(e)=>{
+    moveCardTooltip(e.clientX,e.clientY);
+  });
+  cw.addEventListener('mouseleave',()=>{
+    hideCardTooltip();
+  });
   const ci=document.createElement('div');ci.className='ci'+(alreadyFlipped?' flipped':'');
   const back=document.createElement('div');back.className='cb';
   back.innerHTML='<div class="cbf"><div class="cbstar">✦</div></div>';
@@ -2539,9 +2575,52 @@ function makeCommentEditor(cardKey,existing){
   return wrap;
 }
 
+/* ── 카드 호버 말풍선 ── */
+let _cardTooltipEl=null;
+function _ensureTooltip(){
+  if(!_cardTooltipEl){
+    _cardTooltipEl=document.createElement('div');
+    _cardTooltipEl.className='card-tooltip';
+    document.body.appendChild(_cardTooltipEl);
+  }
+  return _cardTooltipEl;
+}
+function showCardTooltip(card,cardData){
+  const tip=_ensureTooltip();
+  const meaning=MEANINGS[card.id]||'';
+  const comment=(cardData&&cardData.comment)||'';
+  tip.innerHTML=`
+    <div class="card-tooltip-name">${esc(card.name)}</div>
+    <div class="card-tooltip-kr">${esc(card.kr)}</div>
+    <div class="card-tooltip-meaning">${esc(meaning)}</div>
+    ${comment?`<div class="card-tooltip-comment">
+      <div class="card-tooltip-comment-lbl">✦ 상담사 코멘트</div>
+      ${esc(comment)}</div>`:''}`;
+  requestAnimationFrame(()=>tip.classList.add('show'));
+}
+function moveCardTooltip(mx,my){
+  const tip=_ensureTooltip();
+  const tw=tip.offsetWidth||260;
+  const th=tip.offsetHeight||100;
+  let x=mx+18, y=my;
+  let flipped=false;
+  if(x+tw>window.innerWidth-10){
+    x=mx-18;
+    flipped=true;
+  }
+  if(y-th/2<10) y=th/2+10;
+  if(y+th/2>window.innerHeight-10) y=window.innerHeight-th/2-10;
+  tip.style.left=x+'px';
+  tip.style.top=y+'px';
+  tip.style.transform=flipped?'translate(-100%,-50%)':'translate(0,-50%)';
+  tip.classList.toggle('flip-left',flipped);
+}
+function hideCardTooltip(){
+  if(_cardTooltipEl) _cardTooltipEl.classList.remove('show');
+}
+
 function revealCard(card,cardData,cardKey,roundNum){
-  // 이미 열려있으면 무시
-  if(document.querySelector('.overlay')) return;
+  hideCardTooltip();
   const meaning=MEANINGS[card.id]||'';
   const comment=(cardData&&cardData.comment)||'';
   const ov=document.createElement('div');ov.className='overlay';
