@@ -2613,6 +2613,9 @@ function showSpread(){
       el.dataset.idx=i;
 
       el.onclick=()=>selectSpreadCard(card,el);
+      el.addEventListener('mouseenter',()=>{
+        if(el.dataset.selected!=='1' && window.playCardHoverSound) playCardHoverSound();
+      });
       document.body.appendChild(el);
     });
 
@@ -3497,43 +3500,94 @@ document.addEventListener('click',function(e){
     }catch(e){}
   };
 
-  // 카드 픽: 우웅 공명 (저음 스윕 + 부드러운 울림)
+  // 카드 호버: 샤라랑 (고음 shimmer — 카드를 스치는 느낌)
+  let _lastHoverTime=0;
+  window.playCardHoverSound=function(){
+    if(!_sfxOn)return;
+    const now2=Date.now();
+    if(now2-_lastHoverTime<80) return; // 연속 호버 시 과다 재생 방지
+    _lastHoverTime=now2;
+    try{
+      const c=sctx(),now=c.currentTime;
+      // 랜덤 피치로 카드마다 약간 다른 느낌
+      const baseF=2800+Math.random()*1200;
+      // 메인 shimmer (고음 짧은 스윕)
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='sine';
+      o.frequency.setValueAtTime(baseF,now);
+      o.frequency.exponentialRampToValueAtTime(baseF*0.6,now+.12);
+      g.gain.setValueAtTime(0,now);
+      g.gain.linearRampToValueAtTime(.025*_sfxVol,now+.015);
+      g.gain.exponentialRampToValueAtTime(.0001,now+.14);
+      o.connect(g);g.connect(c.destination);
+      o.start(now);o.stop(now+.16);
+      // 브러시 노이즈 (카드 종이 스치는 소리)
+      const buf=c.createBuffer(1,Math.floor(c.sampleRate*.04),c.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let j=0;j<d.length;j++) d[j]=(Math.random()*2-1)*.3;
+      const src=c.createBufferSource();
+      const ng=c.createGain();
+      const hf=c.createBiquadFilter();
+      hf.type='highpass';hf.frequency.value=3000;hf.Q.value=.5;
+      src.buffer=buf;
+      ng.gain.setValueAtTime(.06*_sfxVol,now);
+      ng.gain.exponentialRampToValueAtTime(.0001,now+.06);
+      src.connect(hf);hf.connect(ng);ng.connect(c.destination);
+      src.start(now);
+      // 작은 크리스탈 톤
+      const o2=c.createOscillator(),g2=c.createGain();
+      o2.type='sine';o2.frequency.value=baseF*1.5;
+      g2.gain.setValueAtTime(0,now+.01);
+      g2.gain.linearRampToValueAtTime(.012*_sfxVol,now+.02);
+      g2.gain.exponentialRampToValueAtTime(.0001,now+.09);
+      o2.connect(g2);g2.connect(c.destination);
+      o2.start(now+.01);o2.stop(now+.1);
+    }catch(e){}
+  };
+
+  // 카드 뽑기: 스윽 (카드를 덱에서 빼내는 소리)
   window.playCardPickSound=function(){
     if(!_sfxOn)return;
     try{
       const c=sctx(),now=c.currentTime;
-      // 저음 우웅 (freq sweep up)
+      // 1. 스윽 — 종이 마찰 노이즈 (긴 스위프)
+      const buf=c.createBuffer(1,Math.floor(c.sampleRate*.18),c.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let j=0;j<d.length;j++){
+        const env=1-j/d.length; // 감쇠 엔벨로프
+        d[j]=(Math.random()*2-1)*.4*env;
+      }
+      const src=c.createBufferSource();
+      const ng=c.createGain();
+      const bp=c.createBiquadFilter();
+      bp.type='bandpass';bp.frequency.value=1800;bp.Q.value=.6;
+      src.buffer=buf;
+      ng.gain.setValueAtTime(.14*_sfxVol,now);
+      ng.gain.linearRampToValueAtTime(.18*_sfxVol,now+.03);
+      ng.gain.exponentialRampToValueAtTime(.0001,now+.2);
+      src.connect(bp);bp.connect(ng);ng.connect(c.destination);
+      src.start(now);
+      // 2. 탁 — 카드가 분리되는 임팩트
+      const imp=c.createOscillator(),ig=c.createGain();
+      imp.type='sine';
+      imp.frequency.setValueAtTime(200,now+.02);
+      imp.frequency.exponentialRampToValueAtTime(80,now+.12);
+      ig.gain.setValueAtTime(0,now+.02);
+      ig.gain.linearRampToValueAtTime(.1*_sfxVol,now+.03);
+      ig.gain.exponentialRampToValueAtTime(.0001,now+.15);
+      imp.connect(ig);ig.connect(c.destination);
+      imp.start(now+.02);imp.stop(now+.18);
+      // 3. 우웅 공명 (분리 후 울림)
       const bass=c.createOscillator(),bg=c.createGain();
       bass.type='sine';
-      bass.frequency.setValueAtTime(65,now);
-      bass.frequency.exponentialRampToValueAtTime(120,now+.25);
-      bass.frequency.exponentialRampToValueAtTime(80,now+.6);
-      bg.gain.setValueAtTime(0,now);
-      bg.gain.linearRampToValueAtTime(.12*_sfxVol,now+.06);
-      bg.gain.setValueAtTime(.12*_sfxVol,now+.15);
-      bg.gain.exponentialRampToValueAtTime(.0001,now+.7);
+      bass.frequency.setValueAtTime(70,now+.05);
+      bass.frequency.exponentialRampToValueAtTime(110,now+.2);
+      bass.frequency.exponentialRampToValueAtTime(75,now+.5);
+      bg.gain.setValueAtTime(0,now+.05);
+      bg.gain.linearRampToValueAtTime(.08*_sfxVol,now+.1);
+      bg.gain.exponentialRampToValueAtTime(.0001,now+.55);
       bass.connect(bg);bg.connect(c.destination);
-      bass.start(now);bass.stop(now+.8);
-      // 중음 공명 (따뜻한 울림)
-      const mid=c.createOscillator(),mg=c.createGain();
-      mid.type='sine';
-      mid.frequency.setValueAtTime(160,now+.02);
-      mid.frequency.exponentialRampToValueAtTime(200,now+.2);
-      mid.frequency.exponentialRampToValueAtTime(150,now+.5);
-      mg.gain.setValueAtTime(0,now+.02);
-      mg.gain.linearRampToValueAtTime(.06*_sfxVol,now+.08);
-      mg.gain.exponentialRampToValueAtTime(.0001,now+.55);
-      mid.connect(mg);mg.connect(c.destination);
-      mid.start(now+.02);mid.stop(now+.6);
-      // 서브 하모닉 진동 (우웅 체감)
-      const sub=c.createOscillator(),sg=c.createGain();
-      sub.type='sine';
-      sub.frequency.value=42;
-      sg.gain.setValueAtTime(0,now);
-      sg.gain.linearRampToValueAtTime(.09*_sfxVol,now+.04);
-      sg.gain.exponentialRampToValueAtTime(.0001,now+.45);
-      sub.connect(sg);sg.connect(c.destination);
-      sub.start(now);sub.stop(now+.5);
+      bass.start(now+.05);bass.stop(now+.6);
     }catch(e){}
   };
 
