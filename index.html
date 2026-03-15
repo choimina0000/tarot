@@ -3501,7 +3501,7 @@ document.addEventListener('click',function(e){
     }catch(e){}
   };
 
-  // 카드 호버: 우주 공간 느낌 (서브톤 + 별빛 틱)
+  // 카드 호버: 우주 공간 느낌 (서브톤 + 별빛 틱 + 에코)
   let _lastHoverTime=0;
   window.playCardHoverSound=function(){
     if(!_sfxOn)return;
@@ -3512,6 +3512,15 @@ document.addEventListener('click',function(e){
       const c=sctx(),now=c.currentTime;
       const notes=[261.6,293.7,329.6,349.2,392,440,523.3];
       const baseF=notes[Math.floor(Math.random()*notes.length)];
+
+      // 에코용 딜레이 노드 (2회 반복, 점점 작아짐)
+      const delay1=c.createDelay();delay1.delayTime.value=.12;
+      const dg1=c.createGain();dg1.gain.value=.35;
+      const delay2=c.createDelay();delay2.delayTime.value=.24;
+      const dg2=c.createGain();dg2.gain.value=.15;
+      delay1.connect(dg1);dg1.connect(c.destination);
+      delay2.connect(dg2);dg2.connect(c.destination);
+
       // 깊은 공간감 (아주 낮은 서브 톤이 스치듯)
       const sub=c.createOscillator(),sg=c.createGain();
       sub.type='sine';
@@ -3521,13 +3530,17 @@ document.addEventListener('click',function(e){
       sg.gain.exponentialRampToValueAtTime(.0001,now+.2);
       sub.connect(sg);sg.connect(c.destination);
       sub.start(now);sub.stop(now+.25);
-      // 별빛 틱 (아주 짧은 고음 포인트)
+
+      // 별빛 틱 (아주 짧은 고음 포인트) — 에코 적용
       const tick=c.createOscillator(),tg=c.createGain();
       tick.type='sine';
       tick.frequency.value=baseF*4+Math.random()*500;
       tg.gain.setValueAtTime(.015*_sfxVol,now);
       tg.gain.exponentialRampToValueAtTime(.0001,now+.06);
-      tick.connect(tg);tg.connect(c.destination);
+      tick.connect(tg);
+      tg.connect(c.destination);
+      tg.connect(delay1);
+      tg.connect(delay2);
       tick.start(now);tick.stop(now+.08);
     }catch(e){}
   };
