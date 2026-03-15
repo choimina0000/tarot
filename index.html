@@ -19,6 +19,31 @@
 html,body{height:100%}
 body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
 #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
+/* ── ADMIN ── */
+.admin-wrap{width:100%;max-width:860px;display:flex;flex-direction:column;gap:12px}
+.admin-hdr{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.admin-title{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);letter-spacing:3px}
+.admin-sub{font-size:11px;color:var(--text3);letter-spacing:2px;margin-top:2px}
+.admin-session{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.admin-sess-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:background .15s}
+.admin-sess-hdr:hover{background:rgba(255,255,255,.03)}
+.admin-sess-title{font-size:13px;color:var(--text);font-weight:500}
+.admin-sess-meta{font-size:11px;color:var(--text2);margin-top:2px}
+.admin-sess-badge{font-size:10px;padding:3px 10px;border-radius:10px;background:rgba(72,194,112,.12);border:1px solid rgba(72,194,112,.3);color:var(--green);letter-spacing:1px}
+.admin-sess-body{display:none;padding:14px 16px;border-top:1px solid var(--border);gap:16px;flex-direction:column}
+.admin-sess-body.open{display:flex}
+.admin-cards{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.admin-card-mini{display:flex;flex-direction:column;align-items:center;gap:3px}
+.admin-card-mini img{width:50px;height:85px;border-radius:5px;border:1px solid var(--border2);object-fit:cover}
+.admin-card-mini-lbl{font-size:9px;color:var(--text2);text-align:center;max-width:50px;line-height:1.3}
+.admin-chat{background:var(--bg2);border-radius:8px;padding:10px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:5px}
+.admin-msg{font-size:11px;line-height:1.5;padding:5px 9px;border-radius:6px;max-width:90%}
+.admin-msg-c{background:rgba(201,168,76,.1);border:1px solid var(--gold3);align-self:flex-end;color:var(--text)}
+.admin-msg-k{background:rgba(78,205,196,.07);border:1px solid rgba(78,205,196,.2);align-self:flex-start;color:var(--text)}
+.admin-msg-sys{font-size:10px;color:var(--text3);text-align:center;align-self:center}
+.admin-empty{font-size:12px;color:var(--text3);text-align:center;padding:24px;letter-spacing:1px}
+.admin-section-lbl{font-size:9px;color:var(--text3);letter-spacing:3px;margin-bottom:6px}
+
 /* 카드 완료 화면 */
 .completion-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;padding:20px 0}
 .completion-title{font-family:'Cinzel',serif;font-size:16px;color:var(--gold2);letter-spacing:3px;text-align:center}
@@ -332,13 +357,23 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 <div id="scrRole" class="screen">
   <div class="logo-wrap">
     <div class="logo-eye" style="font-size:18px;letter-spacing:12px;opacity:1;color:var(--gold2)">L A K E</div>
-    <div class="logo-main">TAROT</div>
+    <div class="logo-main" id="logoTarot" style="cursor:default;user-select:none">TAROT</div>
     <div class="logo-sub">실시간 타로 상담 플랫폼</div>
     <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <div style="background:rgba(201,168,76,.08);border:1px solid var(--gold3);border-radius:20px;padding:9px 22px;font-family:'Nanum Myeongjo',serif;font-size:16px;color:var(--gold2);letter-spacing:2px;font-weight:700">✦ 제갈현지</div>
       <div style="background:rgba(201,168,76,.08);border:1px solid var(--gold3);border-radius:20px;padding:9px 22px;font-family:'Nanum Myeongjo',serif;font-size:16px;color:var(--gold2);letter-spacing:2px;font-weight:700">✦ 왈순</div>
     </div>
     <div style="margin-top:8px;font-size:12px;color:var(--text2);letter-spacing:4px;font-family:'Cinzel',serif">TAROT MASTER</div>
+  </div>
+  <div id="liveStatus" style="display:flex;gap:16px;justify-content:center;margin-bottom:20px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(201,168,76,.07);border:1px solid var(--gold3);border-radius:20px;padding:7px 18px">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)"></div>
+      <span style="font-size:13px;color:var(--text2);letter-spacing:1px">상담사 <span id="liveConsultants" style="color:var(--gold2);font-weight:700">0</span>명 접속중</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(78,205,196,.07);border:1px solid rgba(78,205,196,.3);border-radius:20px;padding:7px 18px">
+      <div style="width:7px;height:7px;border-radius:50%;background:var(--blue2);box-shadow:0 0 6px var(--blue2)"></div>
+      <span style="font-size:13px;color:var(--text2);letter-spacing:1px">대기 내담자 <span id="liveClients" style="color:var(--blue2);font-weight:700">0</span>명</span>
+    </div>
   </div>
   <div class="role-btns">
     <div class="role-btn" id="roleConsultant">
@@ -498,6 +533,20 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
   </div>
 </div>
 
+<!-- ⑧ ADMIN -->
+<div id="scrAdmin" class="screen top hidden" style="padding:16px;justify-content:flex-start">
+  <div class="admin-wrap">
+    <div class="admin-hdr">
+      <div>
+        <div class="admin-title">🔍 관리자 뷰</div>
+        <div class="admin-sub">다른 사람에게 보이지 않습니다</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="adminOut">나가기</button>
+    </div>
+    <div id="adminList"><div class="admin-empty">진행 중인 상담이 없어요</div></div>
+  </div>
+</div>
+
 <!-- FIREBASE CONFIG -->
 <script>
 const firebaseConfig = {
@@ -519,6 +568,8 @@ const firebaseConfig = {
 // Do not modify — verification key
 const _K = 'a01DUWgwV1lrRldi';
 function _ck(s){try{return s.length===9&&btoa([...btoa(s)].reverse().join(''))===_K;}catch(e){return false;}}
+const _AK = 'eGtqTjBJVFk=';
+function _ack(s){try{return s.length===6&&btoa([...btoa(s)].reverse().join(''))===_AK;}catch(e){return false;}}
 
 /* ═══════════════════════════════
    DECK + IMAGES
@@ -739,7 +790,7 @@ const _flipped=new Set();
 
 const P='tr4/';
 const $=id=>document.getElementById(id);
-const SCREENS=['scrRole','scrCSetup','scrKSetup','scrLobby','scrKWait','scrSession','scrExpired'];
+const SCREENS=['scrRole','scrCSetup','scrKSetup','scrLobby','scrKWait','scrSession','scrExpired','scrAdmin'];
 function showScreen(id){
   SCREENS.forEach(s=>{
     const el=$(s);
@@ -796,6 +847,23 @@ function init(){
 }
 
 function setupRoleButtons(){
+  // 로고 5번 클릭 → 관리자 비밀 진입
+  let _adminTap=0,_adminTimer=null;
+  const logoEl=$('logoTarot');
+  if(logoEl){
+    logoEl.addEventListener('click',()=>{
+      _adminTap++;
+      clearTimeout(_adminTimer);
+      _adminTimer=setTimeout(()=>{_adminTap=0;},2000);
+      if(_adminTap>=5){
+        _adminTap=0;
+        const pw=prompt('관리자 코드를 입력하세요');
+        if(_ck(pw)){enterAdmin();}
+        else if(pw!==null) alert('코드가 틀렸습니다');
+      }
+    });
+  }
+
   // ROLE BUTTONS
   $('roleConsultant').onclick=()=>show('pwOverlay');
   $('roleClient').onclick=()=>{showScreen('scrKSetup');setTimeout(()=>$('kNick').focus(),80);};
@@ -813,6 +881,18 @@ function setupRoleButtons(){
   // CLIENT SETUP
   $('kBackBtn').onclick=()=>{showScreen('scrRole');};
   $('kEnterBtn').onclick=enterWaiting;
+
+  // 실시간 접속 현황
+  db.ref(`${P}lobby/consultants`).on('value',snap=>{
+    const el=$('liveConsultants');
+    if(el) el.textContent=Object.keys(snap.val()||{}).length;
+  });
+  db.ref(`${P}lobby/waiting`).on('value',snap=>{
+    const data=snap.val()||{};
+    const waiting=Object.keys(data).filter(k=>data[k].status==='waiting');
+    const el=$('liveClients');
+    if(el) el.textContent=waiting.length;
+  });
 }
 
 function checkPw(){
@@ -1663,6 +1743,102 @@ function endSession(){
     clearState();
     setTimeout(()=>showScreen('scrRole'),300);
   }
+}
+
+/* ═══════════════════════════════
+   ADMIN
+═══════════════════════════════ */
+let _adminInterval=null;
+
+function enterAdmin(){
+  showScreen('scrAdmin');
+  $('adminOut').onclick=()=>{showScreen('scrRole');clearInterval(_adminInterval);};
+  loadAdminSessions();
+  clearInterval(_adminInterval);
+  _adminInterval=setInterval(loadAdminSessions,5000);
+}
+
+function loadAdminSessions(){
+  db.ref(`${P}sessions`).once('value').then(snap=>{
+    const all=snap.val()||{};
+    const list=$('adminList');
+    if(!list) return;
+    const active=Object.keys(all).filter(k=>all[k].status==='active');
+    if(!active.length){
+      list.innerHTML='<div class="admin-empty">진행 중인 상담이 없어요</div>';
+      return;
+    }
+    list.innerHTML='';
+    active.forEach(rid=>{
+      const s=all[rid];
+      const el=document.createElement('div');el.className='admin-session';
+      const cname=(s.client||{}).nick||'알 수 없음';
+      const conname=s.consultantNick||'알 수 없음';
+      const rnd=(s.round||0)+1;
+      const hdr=document.createElement('div');hdr.className='admin-sess-hdr';
+      hdr.innerHTML=`
+        <div>
+          <div class="admin-sess-title">✦ ${esc(conname)} ↔ ${esc(cname)}</div>
+          <div class="admin-sess-meta">Room ${rid} · Round ${rnd} · 카드 ${Object.keys(((s.rounds||{})[s.round||0]||{}).cards||{}).length}장</div>
+        </div>
+        <span class="admin-sess-badge">상담 중</span>`;
+
+      const body=document.createElement('div');body.className='admin-sess-body';
+
+      // 카드들
+      const rounds=s.rounds||{};
+      let allCards=[];
+      Object.keys(rounds).sort().forEach(ri=>{
+        const cards=rounds[ri].cards||{};
+        const q=rounds[ri].question||'';
+        Object.values(cards).sort((a,b)=>a.ts-b.ts).forEach((c,i)=>{
+          allCards.push({...c,round:Number(ri),q,idx:i});
+        });
+      });
+
+      if(allCards.length){
+        const cardSec=document.createElement('div');
+        const cl=document.createElement('div');cl.className='admin-section-lbl';cl.textContent='뽑힌 카드';
+        const cw=document.createElement('div');cw.className='admin-cards';
+        allCards.forEach((c,i)=>{
+          const card=DECK.find(d=>d.id===c.id);if(!card)return;
+          const cm=document.createElement('div');cm.className='admin-card-mini';
+          const img=document.createElement('img');img.src=cardImg(card);
+          img.onerror=()=>{img.style.display='none';};
+          const lbl=document.createElement('div');lbl.className='admin-card-mini-lbl';
+          lbl.textContent=(i+1)+'. '+card.kr;
+          cm.appendChild(img);cm.appendChild(lbl);cw.appendChild(cm);
+        });
+        cardSec.appendChild(cl);cardSec.appendChild(cw);
+        body.appendChild(cardSec);
+      }
+
+      // 채팅
+      const msgs=Object.values(s.chat||{}).sort((a,b)=>a.ts-b.ts);
+      if(msgs.length){
+        const chatSec=document.createElement('div');
+        const cl2=document.createElement('div');cl2.className='admin-section-lbl';cl2.textContent='채팅 내역';
+        const cbox=document.createElement('div');cbox.className='admin-chat';
+        msgs.slice(-30).forEach(m=>{
+          const me=document.createElement('div');
+          if(m.sys){me.className='admin-msg admin-msg-sys';me.textContent=m.text;}
+          else{
+            me.className='admin-msg admin-msg-'+(m.role==='consultant'?'c':'k');
+            me.textContent=(m.nick||m.role)+': '+m.text;
+          }
+          cbox.appendChild(me);
+        });
+        cbox.scrollTop=cbox.scrollHeight;
+        chatSec.appendChild(cl2);chatSec.appendChild(cbox);
+        body.appendChild(chatSec);
+      }
+
+      // 토글
+      hdr.onclick=()=>{body.classList.toggle('open');};
+      el.appendChild(hdr);el.appendChild(body);
+      list.appendChild(el);
+    });
+  });
 }
 
 window.addEventListener('DOMContentLoaded',init);
