@@ -7,17 +7,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Sans+KR:wght@300;400;500&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#000008;--bg2:#04041a;--panel:#06062a;--card-bg:#080820;
+  --bg:#03030f;--bg2:#07071e;--panel:#0a0a2e;--card-bg:#0c0c28;
   --border:#1a1a40;--border2:#2a2a60;
   --gold:#c9a84c;--gold2:#e8c870;--gold3:#6a5520;
   --blue:#4a80d4;--blue2:#6ab4e8;--blue3:#1a3060;
   --green:#48c270;--red:#c04060;
-  --text:#e4ddf8;--text2:#8880b8;--text3:#30305a;
+  --text:#f2eeff;--text2:#c0b8e8;--text3:#7070aa;
   --cw:120px;--ch:205px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{background:#000008;color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
+body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;overflow-x:hidden;font-size:15px}
 #stars{position:fixed;inset:0;z-index:0;pointer-events:none}
 /* ── GAME FEEL ── */
 @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
@@ -251,10 +251,10 @@ body{background:#000008;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 .lobby-meta{font-size:13px;color:var(--text2);margin-top:3px}
 .lobby-settings{background:var(--panel);border:1px solid var(--border);border-radius:10px;
   padding:13px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0}
-.lset-lbl{font-size:12px;color:var(--text2);letter-spacing:2px}
+.lset-lbl{font-size:12px;color:var(--text);letter-spacing:2px}
 .lset-select{background:var(--bg2);border:1px solid var(--border2);border-radius:6px;
   padding:6px 11px;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:12px}
-.lobby-list-label{font-size:11px;color:var(--text3);letter-spacing:3px;flex-shrink:0}
+.lobby-list-label{font-size:11px;color:var(--text2);letter-spacing:3px;flex-shrink:0}
 .lobby-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:200px}
 .lobby-empty{text-align:center;color:var(--text3);font-size:13px;letter-spacing:1px;padding:40px 20px;line-height:2}
 .client-card{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:14px 16px;
@@ -264,7 +264,7 @@ body{background:#000008;color:var(--text);font-family:'Noto Sans KR',sans-serif;
   display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
 .c-info{flex:1;min-width:0}
 .c-name{font-size:15px;font-weight:500;color:var(--text);margin-bottom:2px}
-.c-meta{font-size:12px;color:var(--text2);margin-bottom:5px}
+.c-meta{font-size:12px;color:rgba(180,175,220,.8);margin-bottom:5px}
 .c-q{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:14px;color:var(--gold2);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px;opacity:.85}
 .c-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
@@ -415,9 +415,9 @@ body{background:#000008;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 .dc-comment-lbl{font-size:10px;color:var(--gold3);letter-spacing:2px;margin-bottom:3px;}
 
 /* SECTION LABELS */
-.sec-lbl{font-size:11px;color:var(--text2);letter-spacing:3px;border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:11px}
+.sec-lbl{font-size:11px;color:rgba(200,195,240,.7);letter-spacing:3px;border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:11px}
 .round-block{background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:13px}
-.rb-title{font-size:10px;color:var(--text2);letter-spacing:3px;margin-bottom:5px}
+.rb-title{font-size:10px;color:rgba(200,195,240,.7);letter-spacing:3px;margin-bottom:5px}
 .rb-q{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--gold2);
   padding:7px 10px;background:rgba(201,168,76,.05);border-left:2px solid var(--gold3);border-radius:0 4px 4px 0;margin-bottom:9px;line-height:1.5}
 .empty-msg{font-size:13px;color:var(--text3);letter-spacing:1px;padding:16px 0;text-align:center}
@@ -601,7 +601,7 @@ body{background:#000008;color:var(--text);font-family:'Noto Sans KR',sans-serif;
 </div>
 
 <!-- ④ LOBBY -->
-<div id="scrLobby" class="screen hidden" style="justify-content:flex-start;padding-top:20px;padding-bottom:20px;background:transparent">
+<div id="scrLobby" class="screen hidden" style="justify-content:flex-start;padding-top:20px;padding-bottom:20px;background:rgba(2,2,15,.7)">
   <div class="lobby-wrap">
     <div class="lobby-top">
       <div>
@@ -962,7 +962,7 @@ const QUOTES=[
       stars.push({
         x:Math.random()*W, y:Math.random()*H,
         r: t>.97?Math.random()*2.2+1.5 : t>.85?Math.random()*1.1+0.5 : Math.random()*0.5+0.1,
-        o: Math.random()*0.8+0.15,
+        o: Math.random()*0.85+0.2,
         sp: Math.random()*4+0.8,
         hue: 190+Math.random()*80,
         bright: t>.97
@@ -983,39 +983,9 @@ const QUOTES=[
     ctx.clearRect(0,0,W,H);
     const t=Date.now()/1000;
 
-    // 우주 배경 - 은하 중심 깊이감
-    const bg=ctx.createRadialGradient(W*.46,H*.35,0,W*.46,H*.35,W*.85);
-    bg.addColorStop(0,'rgba(45,20,100,.85)');
-    bg.addColorStop(.2,'rgba(20,8,60,.65)');
-    bg.addColorStop(.5,'rgba(5,3,25,.5)');
-    bg.addColorStop(.8,'rgba(1,1,10,.3)');
-    bg.addColorStop(1,'rgba(0,0,4,.0)');
-    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // 순수 딥 스페이스 배경 (그라데이언트 없음)
 
-    // 성간 빛 스윕 (시간에 따라 흐르는 빛의 띠)
-    const sweepAngle=t*.04;
-    const sx=W*.5+Math.cos(sweepAngle)*W*.8;
-    const sy=H*.5+Math.sin(sweepAngle)*H*.6;
-    const sweep=ctx.createRadialGradient(sx,sy,0,sx,sy,W*.6);
-    sweep.addColorStop(0,'rgba(120,80,200,.04)');
-    sweep.addColorStop(.3,'rgba(80,50,160,.02)');
-    sweep.addColorStop(1,'transparent');
-    ctx.fillStyle=sweep; ctx.fillRect(0,0,W,H);
-
-    // 성운 (천천히 드리프트)
     driftT+=0.00015;
-    nebulas.forEach(n=>{
-      const dx=Math.sin(driftT*n.hue*.001+n.hue)*W*.04;
-      const dy=Math.cos(driftT*n.hue*.0007+n.hue)*H*.025;
-      ctx.save(); ctx.translate(n.x+dx,n.y+dy); ctx.rotate(n.rot+t*.004);
-      ctx.scale(n.rx/n.ry,1);
-      const g=ctx.createRadialGradient(0,0,0,0,0,n.ry);
-      g.addColorStop(0,`hsla(${n.hue},65%,55%,${n.o*2.5})`);
-      g.addColorStop(.4,`hsla(${n.hue+25},55%,40%,${n.o*1.2})`);
-      g.addColorStop(1,`hsla(${n.hue},40%,20%,0)`);
-      ctx.beginPath(); ctx.arc(0,0,n.ry,0,Math.PI*2);
-      ctx.fillStyle=g; ctx.fill(); ctx.restore();
-    });
 
     // 별 (크기에 따라 시차 드리프트 속도 다름)
     stars.forEach(st=>{
@@ -1042,7 +1012,7 @@ const QUOTES=[
         }
       }
       ctx.beginPath();ctx.arc(st.x+sdx,st.y+sdy,st.r,0,Math.PI*2);
-      ctx.fillStyle=`hsla(${st.hue},50%,${st.bright?98:85}%,${a})`;
+      ctx.fillStyle=`hsla(${st.hue},50%,${st.bright?100:92}%,${a})`;
       ctx.fill();
     });
 
