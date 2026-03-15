@@ -1007,18 +1007,24 @@ function enterSession(){
 /* ─ 접속 상태 추적 ─ */
 function setupPresence(){
   if(myRole==='client'){
-    // 내담자: 접속 표시 + 창 닫으면 자동 제거
+    // 내담자: 접속하면 true 기록, 창 닫히면 서버가 자동 삭제
     const presRef=db.ref(`${P}sessions/${roomId}/presence/client`);
-    presRef.set({nick:myNick,online:true,ts:Date.now()});
-    presRef.onDisconnect().set({nick:myNick,online:false,ts:Date.now()});
+    presRef.set(true);
+    presRef.onDisconnect().remove();
+    // 명시적으로 나가기 버튼 눌러도 삭제
+    window.addEventListener('beforeunload',()=>{presRef.remove();});
   } else {
-    // 상담사: 내담자 접속 상태 감시
+    // 상담사: 내담자 presence 값이 사라지면(null) 나간 것
+    let clientWasPresent=false;
     db.ref(`${P}sessions/${roomId}/presence/client`).on('value',snap=>{
-      const data=snap.val();
-      if(!data) return;
-      if(data.online===false){
-        sendSysMsg('⚠️ 내담자가 대화방을 나갔습니다.');
-        notify('⚠️ 내담자가 나갔어요!',5000);
+      const val=snap.val();
+      if(val===true){
+        clientWasPresent=true; // 내담자 접속 확인
+      } else if(val===null&&clientWasPresent){
+        // 있다가 사라짐 → 나간 것
+        sendSysMsg('⚠️ 내담자 '+myNick+'님이 대화방을 나갔습니다.');
+        notify('⚠️ 내담자가 나갔어요! 잠시 기다려주세요.',6000);
+        clientWasPresent=false;
       }
     });
   }
