@@ -837,6 +837,8 @@ const rnd=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=~~(Math.rando
 let db;
 const myKey=(()=>{let k=localStorage.getItem('t_uid');if(!k){k='u'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);localStorage.setItem('t_uid',k);}return k;})();
 let myRole='',myNick='',roomId='',currentRound=0,localDeck=[],drawnCount=0,maxCards=3,prevShufTs=0,_isJoined=false;
+let _inactiveTimer=null,_lastActivity=0;
+const INACTIVE_MS=8*60*1000; // 8분
 let typingTimer=null,unreadChat=0,activeTab='card';
 
 // KEY FIX: track already-flipped cards to prevent re-animation on re-render
@@ -1191,6 +1193,48 @@ function startSessionTimer(){
 }
 function stopSessionTimer(){clearInterval(sessionTimerInterval);}
 
+let _warnTimer=null;
+function resetActivityTimer(){
+  _lastActivity=Date.now();
+  clearTimeout(_inactiveTimer);
+  clearTimeout(_warnTimer);
+  if(myRole!=='consultant'||_isJoined) return;
+  // 7분 후 경고
+  _warnTimer=setTimeout(()=>{
+    if(Date.now()-_lastActivity>=7*60*1000-1000){
+      notify('⏰ 1분 후 비활성으로 자동 종료됩니다.',8000);
+      sendSysMsg('⚠️ 1분간 활동이 없으면 자동 종료됩니다. 계속하려면 채팅을 입력해주세요.');
+    }
+  },7*60*1000);
+  // 8분 후 자동 종료
+  _inactiveTimer=setTimeout(()=>{
+    if(Date.now()-_lastActivity>=INACTIVE_MS-1000){
+      autoEndSession();
+    }
+  },INACTIVE_MS);
+}
+
+function autoEndSession(){
+  clearTimeout(_inactiveTimer);
+  stopSessionTimer();
+  sendSysMsg('⚠️ 8분간 활동이 없어 상담이 자동 종료됩니다.');
+  notify('⏰ 비활성으로 자동 종료됩니다.',4000);
+  db.ref(`${P}sessions/${roomId}/status`).set('ended');
+  db.ref(`${P}sessions/${roomId}/endedAt`).set(Date.now());
+  setTimeout(()=>{
+    deleteSessionData().then(()=>{
+      clearState();
+      notify('자동 종료됐어요. 대기실로 이동합니다.');
+      setTimeout(()=>{
+        roomId='';currentRound=0;_flipped.clear();
+        showScreen('scrLobby');
+        db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
+        db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
+      },800);
+    });
+  },2000);
+}
+
 /* ═══════════════════════════════
    SESSION
 ═══════════════════════════════ */
@@ -1216,6 +1260,7 @@ function enterSession(){
   if(_isJoined){show('sLeave');}else{hide('sLeave');}
 
   startSessionTimer();
+  resetActivityTimer();
   $('sAddQ').onclick=requestAddQ;
   if(myRole==='consultant'){
     $('sSave').onclick=saveSession;
@@ -1697,6 +1742,7 @@ function playShuffleAnim(stack,cb){
 }
 
 function doDrawCard(){
+  resetActivityTimer();
   db.ref(`${P}sessions/${roomId}/rounds/${currentRound}/cards`).once('value').then(snap=>{
     const existing=snap.val()||{};
     const drawn=Object.keys(existing).length;
@@ -1778,6 +1824,7 @@ function listenChat(){
       box.appendChild(el);
     });
     box.scrollTop=box.scrollHeight;
+    resetActivityTimer();
     if(activeTab==='card'){
       unreadChat++;
       const badge=$('chatBadge');
@@ -1788,6 +1835,7 @@ function listenChat(){
 
 function sendMsg(){
   const inp=$('chatIn'),txt=inp.value.trim();if(!txt)return;
+  resetActivityTimer();
   db.ref(`${P}sessions/${roomId}/chat`).push({
     role:myRole,nick:myNick,text:txt,ts:Date.now(),
     senderKey:myKey  // 상담사 색상 구분용
@@ -1925,6 +1973,8 @@ function endSession(){
     const wantSave=confirm('상담 내역을 저장하시겠어요?\n\n확인: 저장 후 데이터 삭제\n취소: 저장 없이 바로 삭제');
     const finish=()=>{
       stopSessionTimer();
+      clearTimeout(_inactiveTimer);
+      clearTimeout(_warnTimer);
       db.ref(`${P}sessions/${roomId}/status`).set('ended');
       db.ref(`${P}sessions/${roomId}/endedAt`).set(Date.now());
       sendSysMsg('✦ 상담이 종료됐습니다. 데이터가 안전하게 삭제됩니다.');
