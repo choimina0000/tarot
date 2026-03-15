@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mystic Tarot</title>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<title>Lake Tarot</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Noto+Sans+KR:wght@300;400;500&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#05050e;--bg2:#09091a;--panel:#0c0c22;--card-bg:#0f0f28;
@@ -177,6 +177,11 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 .msg{padding:9px 12px;border-radius:7px;max-width:88%;font-size:13px;line-height:1.6;word-break:break-word}
 .msg-c{background:rgba(201,168,76,.1);border:1px solid var(--gold3);align-self:flex-end;color:var(--text)}
 .msg-k{background:rgba(78,205,196,.07);border:1px solid rgba(78,205,196,.2);align-self:flex-start;color:var(--text)}
+.msg-mine{background:rgba(201,168,76,.13);border:1px solid var(--gold3);align-self:flex-end;color:var(--text);border-radius:14px 14px 4px 14px;}
+.msg-other{background:rgba(78,205,196,.08);border:1px solid rgba(78,205,196,.22);align-self:flex-start;color:var(--text);border-radius:14px 14px 14px 4px;}
+.msg-mine .msg-name{text-align:right;color:var(--gold3);}
+.msg-other .msg-name{color:rgba(78,205,196,.7);}
+.msg-mine .msg-time{text-align:right;}
 .msg-sys{background:rgba(100,100,200,.08);border:1px solid rgba(100,100,180,.15)!important;font-size:11px;color:#9090d0;text-align:center;align-self:center;padding:5px 12px;border-radius:6px;width:100%;}
 .msg-name{font-size:10px;letter-spacing:2px;margin-bottom:2px;opacity:.7}
 .msg-time{font-size:10px;color:var(--text3);margin-top:3px;text-align:right;}
@@ -322,9 +327,14 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 <!-- ① ROLE SELECT -->
 <div id="scrRole" class="screen">
   <div class="logo-wrap">
-    <div class="logo-eye">M Y S T I C</div>
+    <div class="logo-eye" style="font-size:18px;letter-spacing:12px;opacity:1;color:var(--gold2)">L A K E</div>
     <div class="logo-main">TAROT</div>
     <div class="logo-sub">실시간 타로 상담 플랫폼</div>
+    <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <div style="background:rgba(201,168,76,.08);border:1px solid var(--gold3);border-radius:20px;padding:9px 22px;font-family:'Nanum Myeongjo',serif;font-size:16px;color:var(--gold2);letter-spacing:2px;font-weight:700">✦ 제갈현지</div>
+      <div style="background:rgba(201,168,76,.08);border:1px solid var(--gold3);border-radius:20px;padding:9px 22px;font-family:'Nanum Myeongjo',serif;font-size:16px;color:var(--gold2);letter-spacing:2px;font-weight:700">✦ 왈순</div>
+    </div>
+    <div style="margin-top:8px;font-size:12px;color:var(--text2);letter-spacing:4px;font-family:'Cinzel',serif">TAROT MASTER</div>
   </div>
   <div class="role-btns">
     <div class="role-btn" id="roleConsultant">
@@ -441,7 +451,7 @@ body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-seri
 <!-- ⑥ SESSION -->
 <div id="scrSession" class="hidden">
   <div class="sess-hdr">
-    <div class="sess-logo">✦ MYSTIC TAROT</div>
+    <div class="sess-logo">✦ LAKE TAROT</div>
     <div class="sess-info"><div class="sdot off" id="sDot"></div><span id="sInfo">-</span><span class="sess-timer hidden" id="sTimer">00:00</span></div>
     <div class="sess-acts">
       <button class="hb blue hidden" id="sAddQ">+ 추가 질문</button>
@@ -1018,48 +1028,62 @@ let _hbInterval=null;
 
 function setupPresence(){
   const presRef=db.ref(`${P}sessions/${roomId}/presence/client`);
+  const leftRef=db.ref(`${P}sessions/${roomId}/presence/clientLeft`);
 
   if(myRole==='client'){
-    // 내담자: 3초마다 타임스탬프 전송 (하트비트)
+    // 하트비트: 3초마다 타임스탬프 전송
     function sendHb(){ presRef.set(Date.now()); }
     sendHb();
     _hbInterval=setInterval(sendHb,3000);
-    // 창 닫힐 때 즉시 0으로 (빠른 신호)
+    // 새로고침/일반 unload: 하트비트만 중단 (새로고침이면 곧 재연결되므로 알림 X)
     window.addEventListener('beforeunload',()=>{
       clearInterval(_hbInterval);
-      presRef.set(0);
+      // 새로고침인지 감지: beforeunload 후 빠르게 재접속되면 새로고침
+      // intentional exit는 endSession에서 별도 처리
     });
-    presRef.onDisconnect().set(0);
+    presRef.onDisconnect().set(0); // 앱 강제종료 대비
 
   } else {
-    // 상담사: 5초마다 하트비트 값 체크
+    // 상담사: 알림 로직
     let lastSeen=null;
     let alerted=false;
+    let alertTimer=null;
 
-    presRef.on('value',snap=>{
-      const val=snap.val();
-      if(!val||val===0){
-        // 즉시 0이 오면 바로 알림
-        if(lastSeen!==null&&!alerted){
-          alerted=true;
-          sendSysMsg('⚠️ 내담자가 대화방을 나갔습니다.');
-          notify('⚠️ 내담자가 나갔어요!',6000);
-        }
-      } else {
-        lastSeen=val;
-        alerted=false; // 재접속 시 초기화
+    function triggerAlert(){
+      if(alerted) return;
+      alerted=true;
+      sendSysMsg('⚠️ 내담자가 대화방을 나갔습니다.');
+      notify('⚠️ 내담자가 나갔어요!',6000);
+    }
+
+    // 명시적 퇴장 신호 감시 (즉시 알림)
+    leftRef.on('value',snap=>{
+      if(snap.val()===true&&lastSeen!==null&&!alerted){
+        triggerAlert();
       }
     });
 
-    // 5초마다 마지막 하트비트 확인 (앱 강제종료 등 대비)
-    setInterval(()=>{
-      if(lastSeen===null||alerted) return;
-      const gap=Date.now()-lastSeen;
-      if(gap>8000){ // 8초 이상 신호 없으면
-        alerted=true;
-        sendSysMsg('⚠️ 내담자가 대화방을 나갔습니다.');
-        notify('⚠️ 내담자가 나갔어요!',6000);
+    // 하트비트 감시
+    presRef.on('value',snap=>{
+      const val=snap.val();
+      if(val&&val>0){
+        lastSeen=val;
+        alerted=false; // 재접속하면 알림 초기화
+        clearTimeout(alertTimer);
+      } else if(val===0&&lastSeen!==null){
+        // 0이 왔을 때: 새로고침일 수 있으니 5초 유예
+        clearTimeout(alertTimer);
+        alertTimer=setTimeout(()=>{
+          // 5초 후에도 lastSeen이 갱신 안 됐으면 진짜 나간 것
+          if(Date.now()-lastSeen>5000) triggerAlert();
+        },5000);
       }
+    });
+
+    // 앱 강제종료 감지: 10초마다 확인
+    setInterval(()=>{
+      if(!lastSeen||alerted) return;
+      if(Date.now()-lastSeen>12000) triggerAlert();
     },5000);
   }
 }
@@ -1465,7 +1489,9 @@ function listenChat(){
         const tx=document.createElement('div');tx.textContent=m.text;el.appendChild(tx);
         if(ts){const t=document.createElement('div');t.className='msg-time';t.textContent=ts;el.appendChild(t);}
       } else {
-        el.className='msg msg-'+(m.role==='consultant'?'c':'k');
+        // 내가 보낸 메시지면 오른쪽, 상대방이면 왼쪽
+        const isMine=(m.role===myRole);
+        el.className='msg '+(isMine?'msg-mine':'msg-other');
         const nm=document.createElement('div');nm.className='msg-name';
         nm.textContent=m.nick||(m.role==='consultant'?'상담사':'내담자');
         el.appendChild(nm);
@@ -1558,7 +1584,7 @@ function doSaveFile(){
     const d=snap.val()||{};
     const rounds=d.rounds||{};
     const msgs=Object.values(d.chat||{}).sort((a,b)=>a.ts-b.ts);
-    let txt=`✦ MYSTIC TAROT 상담 기록\n날짜: ${new Date().toLocaleString('ko-KR')}\nRoom: ${roomId}\n상담사: ${d.consultantNick||''}\n내담자: ${(d.client||{}).nick||''}\n\n`;
+    let txt=`✦ LAKE TAROT 상담 기록\n날짜: ${new Date().toLocaleString('ko-KR')}\nRoom: ${roomId}\n상담사: ${d.consultantNick||''}\n내담자: ${(d.client||{}).nick||''}\n\n`;
     Object.keys(rounds).sort().forEach(ri=>{
       const r=rounds[ri];
       txt+=`── Round ${+ri+1} ──\n질문: ${r.question||''}\n`;
@@ -1575,7 +1601,7 @@ function doSaveFile(){
     });
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([txt],{type:'text/plain;charset=utf-8'}));
-    a.download=`tarot-${roomId}-${Date.now()}.txt`;a.click();
+    a.download=`lake-tarot-${roomId}-${Date.now()}.txt`;a.click();
     notify('저장됐어요 ✦');
   });
 }
@@ -1598,8 +1624,17 @@ function endSession(){
       setTimeout(()=>{
         deleteSessionData().then(()=>{
           clearState();
-          notify('데이터가 완전히 삭제됐어요 ✦');
-          setTimeout(()=>{showScreen('scrRole');},800);
+          notify('데이터가 삭제됐어요. 대기실로 이동합니다 ✦');
+          // 상담사는 대기실로 바로 복귀
+          setTimeout(()=>{
+            roomId='';
+            currentRound=0;
+            _flipped.clear();
+            showScreen('scrLobby');
+            // 대기실 리스너 재등록
+            db.ref(`${P}lobby/consultants/${myKey}`).set({nick:myNick,at:Date.now()});
+            db.ref(`${P}lobby/consultants/${myKey}`).onDisconnect().remove();
+          },800);
         });
       },1500);
     };
@@ -1607,12 +1642,17 @@ function endSession(){
     else finish();
   } else {
     if(!confirm('상담을 나가시겠어요?'))return;
+    // 명시적 퇴장 신호: 즉시 알림 트리거
+    clearInterval(_hbInterval);
+    db.ref(`${P}sessions/${roomId}/presence/clientLeft`).set(true);
+    db.ref(`${P}sessions/${roomId}/presence/client`).set(0);
     clearState();
-    showScreen('scrRole');
+    setTimeout(()=>showScreen('scrRole'),300);
   }
 }
 
 window.addEventListener('DOMContentLoaded',init);
 </script>
+<div style="position:fixed;bottom:12px;right:16px;z-index:1;font-size:10px;color:var(--text3);letter-spacing:1px;font-family:'Cormorant Garamond',serif;pointer-events:none">made by choimina</div>
 </body>
 </html>
