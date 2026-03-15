@@ -591,13 +591,13 @@ body{background:#03030f;color:var(--text);font-family:'Noto Sans KR',sans-serif;
   <div class="sound-panel">
     <span class="sound-lbl">BGM</span>
     <button class="sound-toggle on" id="btnBgm" onclick="toggleBgm()" title="BGM ON/OFF"></button>
-    <input class="sound-slider" id="sliderBgm" type="range" min="0" max="1" step="0.05" value="0.35"
+    <input class="sound-slider" id="sliderBgm" type="range" min="0" max="100" step="1" value="45"
       oninput="setBgmVol(this.value)" title="BGM 음량">
   </div>
   <div class="sound-panel">
     <span class="sound-lbl">SFX</span>
     <button class="sound-toggle on" id="btnSfx" onclick="toggleSfx()" title="SFX ON/OFF"></button>
-    <input class="sound-slider" id="sliderSfx" type="range" min="0" max="1" step="0.05" value="0.7"
+    <input class="sound-slider" id="sliderSfx" type="range" min="0" max="100" step="1" value="70"
       oninput="setSfxVol(this.value)" title="SFX 음량">
   </div>
 </div>
@@ -3193,14 +3193,15 @@ function toggleBgm(){
   if(_ambMaster){
     const t=_ambMaster.context.currentTime;
     _ambMaster.gain.cancelScheduledValues(t);
-    _ambMaster.gain.linearRampToValueAtTime(_bgmOn?_bgmVol:.0001,t+1.2);
+    _ambMaster.gain.linearRampToValueAtTime(_bgmOn?_bgmVol:.0001,t+1.0);
   }
 }
 function setBgmVol(v){
-  _bgmVol=parseFloat(v);
+  _bgmVol=parseFloat(v)/100;
   if(_bgmOn&&_ambMaster){
-    _ambMaster.gain.cancelScheduledValues(0);
-    _ambMaster.gain.linearRampToValueAtTime(_bgmVol,_ambMaster.context.currentTime+.3);
+    const t=_ambMaster.context.currentTime;
+    _ambMaster.gain.cancelScheduledValues(t);
+    _ambMaster.gain.linearRampToValueAtTime(_bgmVol,t+.3);
   }
 }
 function toggleSfx(){
@@ -3209,7 +3210,7 @@ function toggleSfx(){
   if(btn) btn.classList.toggle('on',_sfxOn);
 }
 function setSfxVol(v){
-  _sfxVol=parseFloat(v);
+  _sfxVol=parseFloat(v)/100;
 }
 /* ── 우주 배경음 ── */
 (function(){
@@ -3224,7 +3225,7 @@ function setSfxVol(v){
       const t=ambCtx.currentTime;
       const master=ambCtx.createGain();
       master.gain.setValueAtTime(0,t);
-      master.gain.linearRampToValueAtTime(.35,t+4); // 4초에 걸쳐 서서히 등장
+      master.gain.linearRampToValueAtTime(.45,t+1.5); // 4초에 걸쳐 서서히 등장
       _ambMaster=master; master.connect(ambCtx.destination);
 
       // ── 레이어 1: 딥 드론 (우주 공간감)
@@ -3307,16 +3308,23 @@ function setSfxVol(v){
     }catch(e){console.log('ambient audio error:',e);}
   }
 
-  // 첫 클릭/터치 시 시작 (브라우저 정책)
+  // 페이지 로드 즉시 시도, 안되면 첫 인터랙션 때 시작
   function onFirst(){
     startAmbient();
     document.removeEventListener('click',onFirst);
     document.removeEventListener('touchstart',onFirst);
     document.removeEventListener('mousemove',onFirst);
+    document.removeEventListener('keydown',onFirst);
   }
-  document.addEventListener('click',onFirst);
-  document.addEventListener('touchstart',onFirst);
-  document.addEventListener('mousemove',onFirst);
+  // 즉시 시도 (자동재생 정책 허용 시 바로 재생)
+  setTimeout(()=>{
+    try{startAmbient();}catch(e){
+      document.addEventListener('click',onFirst);
+      document.addEventListener('touchstart',onFirst);
+      document.addEventListener('mousemove',onFirst);
+      document.addEventListener('keydown',onFirst);
+    }
+  },500);
 })();
 
 window.addEventListener('DOMContentLoaded',init);
